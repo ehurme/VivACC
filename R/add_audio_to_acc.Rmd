@@ -1,0 +1,364 @@
+---
+title: "Add Buzz to ACC"
+output: html_document
+---
+
+# load libraries
+```{r}
+library(tidyverse)
+library(bcpa)
+library(tidyr)
+library(data.table)
+library(lubridate)
+library(janitor)
+library(ggplot2)
+require(PBSmapping)
+library(vroom)
+op <- options(digits.secs=3)
+```
+
+
+### read barometric pressure data
+```{r}
+baro <- vroom("/Users/Edward/Dropbox/Vivesi2018/Analysis/Baro/Original_Data/Mviv18_Altitudes.csv", delim = ",")
+
+start_time <- ymd_hm(paste(baro$Year[1], '/', baro$Month[1], '/', baro$Day[1], " ", baro$Hour[1], ':', baro$Minute[1]))
+baro$Local_Time <- start_time + baro$Minute*60
+
+str(baro)
+
+with(baro[2650:3200,], plot(Local_Time, ALT_Mviv18_02, main = "Mviv18_02", type = "o"))
+with(baro[4000:4800,], plot(Local_Time, ALT_Mviv18_03, main = "Mviv18_03"))
+with(baro[4050:4700,], plot(Local_Time, ALT_Mviv18_04, main = "Mviv18_04"))
+with(baro[8300:10000,], plot(Local_Time, ALT_Mviv18_05, main = "Mviv18_05"))
+with(baro[8200:10000,], plot(Local_Time, ALT_Mviv18_06, main = "Mviv18_06"))
+with(baro[8300:10000,], plot(Local_Time, ALT_Mviv18_07, main = "Mviv18_07"))
+              
+
+baro$ALT_Mviv18_07[1:7000] %>% plot
+
+
+c(baro$ALT_Mviv18_07[1:7000], baro$ALT_Mviv18_06[1:7000]) %>% sd
+baro$ALT_Mviv18_06[1:7000] %>% mean
+baro$ALT_Mviv18_06[1:7000] %>% hist(breaks = 200)
+```
+
+### read gps data
+```{r}
+gps <- fread("/Users/Edward/Dropbox/Vivesi2018/VesperDecodings_IslaPartida/18_06/gps/decode/Track-geoTag.csv", header = TRUE) %>% clean_names
+
+gps$datetime <- ymd_hms(paste0(gps$date, " ", gps$utc))
+gps$Local_Time <- gps$datetime - 7*3600
+
+plot(gps$Local_Time, gps$altitude_m+40, type = "l")
+lines(baro$Local_Time, baro$ALT_Mviv18_06, col = 2)
+
+ll <- with(gps, data.frame(X = longitude_dd, Y = latitude_dd))
+attributes(ll)$projection <- "LL"
+xy <- convUL(ll, km=FALSE)
+gps$X <- xy[,1]
+gps$Y <- xy[,2]
+
+# add barometric pressure altitude to gps data
+gps$baro <- NA
+
+for(i in 1:nrow(gps)){
+  idx <- which.min(abs(gps$Local_Time[i] - baro$Local_Time))
+  if(difftime(gps$Local_Time[i], baro$Local_Time[idx], units = "secs") < 30){
+    gps$baro[i] <- baro$ALT_Mviv18_06[idx]
+  }
+}
+
+plot(gps$X, gps$Y)
+
+ggplot(aes(x = X, y = Y, col = baro), data = gps)+ geom_path(size = 2)+
+  geom_point(data = gps[1,], aes(X, Y), col = "green", size = 2)+
+  geom_point(data = gps[nrow(gps),], aes(X, Y), col = "red", size = 2)
+```
+
+### read audio data
+```{r}
+load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Audio/Mviv18_06_calls.robj")
+Mv18_summary$Local_Time <- Mv18_summary$time -7*3600+years(10)
+Mv18_main$Local_Time <- Mv18_main$time -7*3600+years(10)
+i = 1
+
+Mv18_summary$alt <- NA
+for(i in 1:nrow(Mv18_summary)){
+  idx <- which.min(abs(Mv18_summary$Local_Time[i] - baro$Local_Time))  
+  Mv18_summary$alt[i] <- baro$ALT_Mviv18_06[idx]
+}
+
+Mv18_main$alt <- NA
+for(i in 1:nrow(Mv18_main)){
+  
+  idx <- which.min(abs(Mv18_main$Local_Time[i] - baro$Local_Time))  
+  if(difftime(Mv18_main$Local_Time[i], baro$Local_Time[idx], units = "secs") < 5){
+    Mv18_main$alt[i] <- baro$ALT_Mviv18_06[idx]  
+  }
+}
+layout(1)
+plot(Mv18_main$interval, Mv18_main$alt, xlim = c(0,.2), col = rgb(0,0,0,.1))
+
+with(Mv18_summary, plot(echo, alt, col = rgb(0,0,0,.1)))
+with(Mv18_summary, boxplot(alt~ buzz))
+
+layout(rbind(1:3))
+with(baro[8420:10000,], plot(Local_Time, ALT_Mviv18_06, main = "Mviv18_06", ylim = c(0,50)))
+with(Mv18_summary, points(time-7*3600+years(10), echo/10+15, col = "orange"))
+with(Mv18_summary, points(time-7*3600+years(10), buzz*3, col = 2))
+with(Mv18_summary, plot(time-7*3600+years(10), echo, col = 2))
+
+
+baro$Local_Time[8200]
+Mv18_summary$time[1]
+```
+
+
+```{r}
+# add audio to GPS
+gps$echo <- NA
+gps$ipi_min <- NA
+gps$cons <- NA
+gps$buzz <- NA
+
+i = 1
+for(i in 1:nrow(gps)){
+  int <- interval(gps$Local_Time[i]-7.5,gps$Local_Time[i]+7.5)
+  test <- gps$Local_Time[1:3]
+
+  idx_echo <- sapply(c(int), function(x) { mapply(`%within%`, Mv18_main$Local_Time, x) }) %>% as.vector() %>% which
+
+  gps$echo[i] <- length(idx_echo)
+  gps$ipi_min[i] <- min(Mv18_main$interval[idx_echo], na.rm = T)
+
+}
+
+
+layout(cbind(1:2))
+plot(gps$Local_Time, gps$baro)
+#plot(gps$Local_Time, gps$echo)
+plot(gps$Local_Time, log(gps$ipi_min))
+
+gps$ipi_min[which(is.infinite(gps$ipi_min))] <- NA
+
+# is baro offset by 14 minutes?
+with(na.omit(gps[,c("baro", "ipi_min")]), ccf(x = baro, y = ipi_min, na.action = na.contiguous, lag.max = 150))
+abline(v = 55)
+55*15/60
+
+
+layout(1)
+plot(log(gps$ipi_min), gps$baro)
+
+
+ggplot(aes(x = X, y = Y, col = echo), data = gps)+ geom_path(size = 2)+scale_colour_gradient2()
+
+
+# load acc
+op <- options(digits.secs=3)
+
+acc <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_Mviv18_06.csv")
+gyro <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Gyr_Mviv18_06.csv")
+mag <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mag_Mviv18_06.csv")
+
+A <- full_join(acc, gyro)
+A <- full_join(A, mag)
+write.csv(A, file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/All_Mviv18_06.csv")
+
+```
+
+# read spectrogram
+```{r}
+spec <- "C:/Users/Edward/Dropbox/VivesiAudio/BuzzCheck/Mviv18/Mviv18_06/buzz/"
+files <- list.files(path = spec)
+
+buzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
+i = 565          
+for(i in 1:length(files)){
+  split <- NA
+  hour < NA 
+  min <- NA
+  sec <- NA
+  end <- NA
+  part <- NA
+  
+  split <- strsplit(files[i], split = "_")
+  hour <- as.numeric(split[[1]][6])
+  min <- as.numeric(split[[1]][7])
+  sec <- as.numeric(split[[1]][8])
+  
+  end <- (split[[1]][length(split[[1]])])
+  part <- as.numeric(substr(end, 1, nchar(end)-4))
+  
+  buzz_times[i] <- 
+    ymd("2018-06-10")+hours(hour)+minutes(min)+
+    seconds(sec)+seconds((part-1)/2)
+}
+                  
+```
+
+# load acc
+```{r}
+op <- options(digits.secs=3)
+
+acc <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_Mviv18_06.csv")
+gyro <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Gyr_Mviv18_06.csv")
+mag <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mag_Mviv18_06.csv")
+
+
+```
+
+
+# convert matlab time to UTC
+```{r}
+substr(acc$time, 21, 21) <- "."
+substr(gyro$time, 21, 21) <- "."
+substr(mag$time, 21, 21) <- "."
+
+acc$datetime <- as.POSIXct(acc$time, format = "%d-%b-%Y %H:%M:%OS", tz = "UTC")
+gyro$datetime <- as.POSIXct(gyro$time, format = "%d-%b-%Y %H:%M:%OS", tz = "UTC")
+mag$datetime <- as.POSIXct(mag$time, format = "%d-%b-%Y %H:%M:%OS", tz = "UTC")
+
+with(mag[1:8000,], plot(datetime, x_mag, type = "l"))
+acc$datetime[1]
+```
+
+# add echo to acc
+```{r}
+acc$call <- 0
+i = 1
+for(i in 1:nrow(Mv18_main)){
+  start_idx <- which.min(abs(acc$datetime-(Mv18_main$Local_Time[i]+
+                               Mv18_main$start_time[i])))
+  end_idx <- which.min(abs(acc$datetime-(Mv18_main$Local_Time[i]+
+                                           Mv18_main$start_time[i]+
+                                           Mv18_main$duration[i])))
+  acc$call[start_idx:end_idx] <- 1
+}
+
+
+
+which(acc$call == 1)
+acc[400000:488868,]
+tail(Mv18_main)
+range(Mv18_main$Local_Time)
+range(acc$datetime)
+acc$datetime[start_idx]
+```
+
+# add buzz to acc
+```{r}
+acc$buzz <- 0
+i = 1
+for(i in 1:length(buzz_times)){
+  idx <- which.min(abs(acc$datetime-(buzz_times[i]-7*3600)))
+  acc$buzz[idx:(idx+25)] <- 1
+}
+
+plot(acc$datetime, acc$buzz)
+with(acc,#[499000:500000,], 
+     plot(datetime, x, col = call+1, type = "o", pch = 16))
+
+```
+
+# add baro to ACC
+```{r}
+acc$baro <- 0
+i = 1
+for(i in 1:nrow(baro)){
+  idx <- which.min(abs(acc$datetime-(baro$Local_Time[i])))
+  acc$baro[idx] <- baro$ALT_Mviv18_06
+}
+
+plot(acc$datetime, acc$buzz)
+with(acc[590000:592000,], plot(datetime, x, col = rgb(call, 0,0,.3), pch = 16, type = "o"))
+
+```
+
+
+```{r}
+A <- full_join(acc, gyro)
+A <- full_join(A, mag)
+write.csv(A, file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_buzz_Mviv18_06.csv")
+```
+
+# load latest ACC data
+```{r}
+m18_06 <- read.csv("C:/Users/Edward/Dropbox/VivesiACC/data/clean/clean_ACC_Mviv18_06.csv")
+m18_06$datetime <- as.POSIXct(m18_06$time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
+
+```
+
+## compare both data sets
+```{r}
+plot(acc$x, m18_06$Accelerometer.X)
+```
+hmmm, why are these different....
+
+## add echo to acc
+```{r}
+m18_06$call <- 0
+i = 1
+for(i in 1:nrow(Mv18_main)){
+  start_idx <- which.min(abs((m18_06$datetime-7*3600)-(Mv18_main$Local_Time[i]+
+                               Mv18_main$start_time[i])))
+  end_idx <- which.min(abs((m18_06$datetime-7*3600) -(Mv18_main$Local_Time[i]+
+                                           Mv18_main$start_time[i]+
+                                           Mv18_main$duration[i])))
+  m18_06$call[start_idx:end_idx] <- 1
+}
+
+
+
+which(m18_06$call == 1)
+
+tail(Mv18_main)
+range(Mv18_main$Local_Time)
+range(m18_06$datetime)
+m18_06$datetime[start_idx]
+```
+
+## add buzz to acc
+```{r}
+m18_06$buzz <- 0
+i = 1
+for(i in 1:length(buzz_times)){
+  idx <- which.min(abs(m18_06$datetime-(buzz_times[i])))
+  m18_06$buzz[idx:(idx+25)] <- 1
+}
+
+with(m18_06, plot(datetime, buzz))
+with(m18_06[499000:500000,], 
+     plot(datetime, Accelerometer.X, col = call+buzz+1, cex = call+buzz+1/2,  type = "o", pch = 16))
+
+```
+
+## add baro to acc
+```{r}
+m18_06$baro <- NA
+i = 1
+for(i in 1:nrow(baro)){
+  idx <- which.min(abs(m18_06$datetime-(baro$Local_Time[i])))
+  m18_06$baro[idx] <- baro$ALT_Mviv18_06[i]
+}
+
+# plot(m18_06$datetime, m18_06$buzz)
+# with(m18_06[590000:592000,], plot(datetime, x, col = rgb(call, 0,0,.3), pch = 16, type = "o"))
+
+rle(m18_06$call)
+```
+
+# save data
+```{r}
+save(m18_06, A, acc, gyro, mag, baro, gps, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
+     file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
+load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
+
+```
+
+# write csv
+```{r}
+write.csv(m18_06, file = "Mviv18_06_ACC_Call_Baro.csv")
+```
+

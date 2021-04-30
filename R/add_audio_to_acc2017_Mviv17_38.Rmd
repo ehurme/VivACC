@@ -1,0 +1,156 @@
+---
+title: "add audio to acc 2017"
+output: html_document
+---
+
+# load libraries
+```{r}
+library(tidyverse)
+library(bcpa)
+library(tidyr)
+library(data.table)
+library(lubridate)
+library(janitor)
+library(ggplot2)
+require(PBSmapping)
+library(vroom)
+op <- options(digits.secs=3)
+```
+
+### read audio data
+```{r}
+load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Audio/Mviv17_38_calls.robj")
+Mv18_summary$Local_Time <- Mv18_summary$time -7*3600
+
+Mv18_main$time <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(Mv18_main$file))
+
+for(i in 1:length(Mv18_main$file)){
+  split <- NA
+  hour <- NA 
+  min <- NA
+  sec <- NA
+  end <- NA
+  part <- NA
+  
+  split <- strsplit(Mv18_main$file[i], split = "_")
+  year <- 2017
+  month <- as.numeric(split[[1]][2])
+  day <- as.numeric(split[[1]][3])
+  hour <- as.numeric(split[[1]][4])
+  min <- as.numeric(split[[1]][5])
+  sec <- as.numeric(split[[1]][6])
+  
+  Mv18_main$time[i] <- 
+    ymd(paste0(year,"-",month, "-", day))+hours(hour)+minutes(min)+
+    seconds(sec)
+}
+Mv18_main$Local_Time <- Mv18_main$time -7*3600
+
+with(Mv18_summary, plot(time-7*3600, echo, col = 2))
+with(Mv18_summary, points(time-7*3600, echo/10+15, col = "orange"))
+with(Mv18_summary, points(time-7*3600, buzz*3, col = 2))
+
+Mv18_summary$time[1]
+```
+
+
+# load latest ACC data
+```{r}
+m17_38 <- read.csv("C:/Users/Edward/Dropbox/VivesiACC/data/clean/clean_ACC_Mviv17_38.csv")
+m17_38$datetime <- as.POSIXct(m17_38$time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
+
+```
+
+## add echo to acc
+```{r}
+m17_38$call <- 0
+i = 1
+for(i in 1:nrow(Mv18_main)){
+  start_idx <- which.min(abs((m17_38$datetime)-(Mv18_main$Local_Time[i]+
+                               Mv18_main$start_time[i])))
+  end_idx <- which.min(abs((m17_38$datetime) -(Mv18_main$Local_Time[i]+
+                                           Mv18_main$start_time[i]+
+                                           Mv18_main$duration[i])))
+  # Mv18_main$Local_Time[i]+Mv18_main$start_time[i]
+  # m17_38$datetime[1]
+  m17_38$call[start_idx:end_idx] <- 1
+}
+
+which(m17_38$call == 1)
+
+tail(Mv18_main)
+range(Mv18_main$Local_Time)
+range(m17_38$datetime)
+m17_38$datetime[start_idx]
+```
+
+## get buzz times
+```{r}
+spec <- "C:/Users/Edward/Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_38/Buzz/"
+files <- list.files(path = spec)
+
+buzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
+i = 292     
+for(i in 1:length(files)){
+  split <- NA
+  hour < NA 
+  min <- NA
+  sec <- NA
+  end <- NA
+  part <- NA
+  j = 0
+  split <- strsplit(files[i], split = "_")
+  if(length(split[[1]]) > 16){j = 1}
+  if(length(split[[1]]) == 11){j = 1}
+  year <- 2017
+  month <- as.numeric(split[[1]][4+j])
+  day <- as.numeric(split[[1]][5+j])
+  hour <- as.numeric(split[[1]][6+j])
+  min <- as.numeric(split[[1]][7+j])
+  sec <- as.numeric(split[[1]][8+j])
+  k = 0
+  end <- (split[[1]][length(split[[1]])-k])
+  part <- as.numeric(substr(end, 1, nchar(end)-4))
+  
+  if(length(split[[1]]) == 18){
+    k = 1
+    end <- (split[[1]][length(split[[1]])-k])
+    part <- as.numeric(end)
+  }
+  
+  buzz_times[i] <- 
+    ymd(paste0(year,"-",month, "-", day))+hours(hour)+minutes(min)+
+    seconds(sec)+seconds((part-1)/2)
+}
+```
+
+## add buzz to acc
+```{r}
+buzz_times <- na.omit(buzz_times)
+m17_38$buzz <- 0
+i = 1
+for(i in 1:length(buzz_times)){
+  idx <- which.min(abs(m17_38$datetime-(buzz_times[i]-7*3600)))
+  m17_38$buzz[idx:(idx+25)] <- 1
+}
+
+
+with(m17_38, plot(datetime, buzz))
+with(m17_38[500000:700000,], 
+     plot(datetime, ACCY, col = call+buzz+1, cex = call+buzz+1/2,  type = "o", pch = 16))
+
+```
+
+# save data
+```{r}
+save(m17_38, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
+     file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_38_complete.robj")
+load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_38_complete.robj")
+
+```
+
+# write csv
+```{r}
+write.csv(m17_38, file = "C:/Users/Edward/Dropbox/VivesiACC/data/clean/Audio/Mviv17_38_ACC_Call.csv")
+```
+
