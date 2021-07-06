@@ -412,7 +412,7 @@ rle(m18_06$call)
 ```{r}
 save(m18_06, A, acc, gyro, mag, baro, gps, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
      file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
+load("./../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
 
 ```
 

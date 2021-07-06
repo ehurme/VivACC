@@ -144,13 +144,13 @@ with(m17_38[500000:700000,],
 # save data
 ```{r}
 save(m17_38, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
-     file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_38_complete.robj")
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_38_complete.robj")
+     file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_38_complete.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_38_complete.robj")
 
 ```
 
 # write csv
 ```{r}
-write.csv(m17_38, file = "C:/Users/Edward/Dropbox/VivesiACC/data/clean/Audio/Mviv17_38_ACC_Call.csv")
+write.csv(m17_38, file = "../../../../Dropbox/VivesiACC/data/clean/Audio/Mviv17_38_ACC_Call.csv")
 ```
 
