@@ -43,7 +43,6 @@ buzz_times$true_buzz <- buzz_times$start_clip + buzz_times$offset + buzz_times$s
 
 ```
 
-
 # load DDMT data
 ```{r}
 
