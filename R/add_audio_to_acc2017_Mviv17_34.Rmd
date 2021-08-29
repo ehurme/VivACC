@@ -19,7 +19,7 @@ op <- options(digits.secs=3)
 
 ### read audio data
 ```{r}
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Audio/Mviv17_49_calls.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Audio/Mviv17_34_calls.robj")
 Mv18_summary$Local_Time <- Mv18_summary$time -7*3600
 
 Mv18_main$time <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(Mv18_main$file))
@@ -56,51 +56,51 @@ Mv18_summary$time[1]
 
 # load latest ACC data
 ```{r}
-m17_49 <- read.csv("C:/Users/Edward/Dropbox/VivesiACC/data/clean/clean_ACC_Mviv17_49.csv")
-m17_49$datetime <- as.POSIXct(m17_49$time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
+m17_34 <- read.csv("C:../../../../Dropbox/VivesiACC/data/clean/clean_ACC_Mviv17_34.csv")
+m17_34$datetime <- as.POSIXct(m17_34$time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
 
 ```
 
 ## add echo to acc
 ```{r}
-m17_49$call <- 0
+m17_34$call <- 0
 i = 1
 for(i in 1:nrow(Mv18_main)){
-  start_idx <- which.min(abs((m17_49$datetime)-(Mv18_main$Local_Time[i]+
+  start_idx <- which.min(abs((m17_34$datetime)-(Mv18_main$Local_Time[i]+
                                Mv18_main$start_time[i])))
-  end_idx <- which.min(abs((m17_49$datetime) -(Mv18_main$Local_Time[i]+
+  end_idx <- which.min(abs((m17_34$datetime) -(Mv18_main$Local_Time[i]+
                                            Mv18_main$start_time[i]+
                                            Mv18_main$duration[i])))
   # Mv18_main$Local_Time[i]+Mv18_main$start_time[i]
-  # m17_49$datetime[1]
-  m17_49$call[start_idx:end_idx] <- 1
+  # m17_34$datetime[1]
+  m17_34$call[start_idx:end_idx] <- 1
 }
 
-which(m17_49$call == 1)
+which(m17_34$call == 1)
 
 tail(Mv18_main)
 range(Mv18_main$Local_Time)
-range(m17_49$datetime)
-m17_49$datetime[start_idx]
+range(m17_34$datetime)
+m17_34$datetime[start_idx]
 ```
 
 ## get buzz times
 ```{r}
-spec <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_49/Buzz/"
+spec <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_34/Buzz/"
 files <- list.files(path = spec)
 
 buzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
 i = 292     
 for(i in 1:length(files)){
   split <- NA
-  hour < NA 
+  hour <- NA 
   min <- NA
   sec <- NA
   end <- NA
   part <- NA
   j = 0
   split <- strsplit(files[i], split = "_")
-  if(length(split[[1]]) > 16){j = 1}
+  #if(length(split[[1]]) > 16){j = 1}
   if(length(split[[1]]) == 11){j = 1}
   year <- 2017
   month <- as.numeric(split[[1]][4+j])
@@ -127,23 +127,23 @@ for(i in 1:length(files)){
 ## add buzz to acc
 ```{r}
 buzz_times <- na.omit(buzz_times)
-m17_49$buzz <- 0
+m17_34$buzz <- 0
 i = 1
 for(i in 1:length(buzz_times)){
-  idx <- which.min(abs(m17_49$datetime-(buzz_times[i]-7*3600)))
-  m17_49$buzz[idx:(idx+25)] <- 1
+  idx <- which.min(abs(m17_34$datetime-(buzz_times[i]-7*3600)))
+  m17_34$buzz[idx:(idx+25)] <- 1
 }
 
 
-with(m17_49, plot(datetime, buzz))
-with(m17_49[500000:700000,], 
+with(m17_34, plot(datetime, buzz))
+with(m17_34[500000:700000,], 
      plot(datetime, ACCY, col = call+buzz+1, cex = call+buzz+1/2,  type = "o", pch = 16))
 
 ```
 
 ## get almost buzz times
 ```{r}
-spec <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_49/AlmostBuzz/"
+spec <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_34/AlmostBuzz/"
 files <- list.files(path = spec)
 
 almost_buzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
@@ -157,7 +157,7 @@ for(i in 1:length(files)){
   part <- NA
   j = 0
   split <- strsplit(files[i], split = "_")
-  if(length(split[[1]]) > 16){j = 1}
+  #if(length(split[[1]]) > 16){j = 1}
   if(length(split[[1]]) == 11){j = 1}
   year <- 2017
   month <- as.numeric(split[[1]][4+j])
@@ -184,16 +184,16 @@ for(i in 1:length(files)){
 ## add almost buzz to acc
 ```{r}
 almost_buzz_times <- na.omit(almost_buzz_times)
-m17_49$almost_buzz <- 0
+m17_34$almost_buzz <- 0
 i = 1
 for(i in 1:length(almost_buzz_times)){
-  idx <- which.min(abs(m17_49$datetime-(almost_buzz_times[i]-7*3600)))
-  m17_49$almost_buzz[idx:(idx+25)] <- 1
+  idx <- which.min(abs(m17_34$datetime-(almost_buzz_times[i]-7*3600)))
+  m17_34$almost_buzz[idx:(idx+25)] <- 1
 }
 
 
-with(m17_49, plot(datetime, almost_buzz))
-with(m17_49[500000:700000,], 
+with(m17_34, plot(datetime, almost_buzz))
+with(m17_34[500000:700000,], 
      plot(datetime, ACCY, col = call+almost_buzz+1, cex = call+almost_buzz+1/2,  type = "o", pch = 16))
 
 ```
@@ -231,16 +231,17 @@ for(i in s){
 
 
 ```
+
 # save data
 ```{r}
-save(m17_49, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
-     file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_49_complete.robj")
-load("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_49_complete.robj")
+save(m17_34, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
+     file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_34_complete.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_34_complete.robj")
 
 ```
 
 # write csv
 ```{r}
-write.csv(m17_49, file = "../../../../Dropbox/VivesiACC/data/clean/Audio/Mviv17_49_ACC_Call.csv")
+write.csv(m17_34, file = "../../../../Dropbox/VivesiACC/data/clean/Audio/Mviv17_34_ACC_Call.csv")
 ```
 

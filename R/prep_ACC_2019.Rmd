@@ -1,0 +1,104 @@
+---
+title: "Untitled"
+author: "Edward hurme"
+date: "5/19/2021"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(bcpa)
+library(tidyr)
+library(data.table)
+library(lubridate)
+library(janitor)
+library(ggplot2)
+require(PBSmapping)
+library(vroom)
+op <- options(digits.secs=3)
+```
+
+
+```{r}
+dir <- "../../../../Dropbox/Vivesi2019/Mviv19_data/"
+
+files <- list.dirs(path = dir, recursive = FALSE)
+idx <- which(grepl(files, pattern = "pre") | grepl(files, pattern = "post"))
+# 12, 17, 19, 21, 24
+idx <- c(14, 16, 19, 20, 21)
+files[idx]
+i <- idx[5]
+for(i in idx){
+  imu <- {}
+  imu <- list.files(files[i], recursive = TRUE, pattern = "MPU")
+  j = 1
+  acc <- {}
+  for(j in 1:length(imu)){
+    tmp <- fread(paste0(files[i], "/", imu[j]))
+    file <- strsplit(imu[j], split = "-")
+    s <- strsplit(file[[1]][3], split = "_")[[1]]
+    start <- ymd_hms(paste0("2019-",s[3], "-", s[4], " ", s[5], ":", s[6], ":", s[7]))
+    e <- strsplit(file[[1]][4], split = "_")[[1]]
+    end <- ymd_hms(paste0("2019-",e[2], "-", e[3], " ", e[4], ":", e[5], ":", 
+                          substr(e[6], 1, nchar(e[6])-8)))
+    tmp$time <- seq.POSIXt(start, end, length.out = nrow(tmp))
+    acc <- rbind(acc, tmp)
+  }
+  bat <- strsplit(files[i], split = "//")[[1]][2]
+  
+  acc <- acc[order(acc$time),]
+  write.csv(acc, file = paste0("../../../../Dropbox/VivesiACC/data/clean/clean_ACC_", bat, ".csv"))
+  acc <- {}
+}
+i
+
+```
+
+
+# convert full to clean
+## matlab time
+```{r}
+#Convert a numeric  MATLAB datenum (days since 0000-1-1 00:00) to seconds in 
+#the Unix epoch (seconds since 1970-1-1 00:00). Specify a time zone if the 
+#input datenum is anything other than the GMT/UTC time zone. 
+matlab2POS = function(x, timez = "UTC") {
+	days = x - 719529 	# 719529 = days from 1-1-0000 to 1-1-1970
+	secs = days * 86400 # 86400 seconds in a day
+	# This next string of functions is a complete disaster, but it works.
+	# It tries to outsmart R by converting the secs value to a POSIXct value
+	# in the UTC time zone, then converts that to a time/date string that 
+	# should lose the time zone, and then it performs a second as.POSIXct()
+	# conversion on the time/date string to get a POSIXct value in the user's 
+	# specified timezone. Time zones are a goddamned nightmare.
+	return(as.POSIXct(strftime(as.POSIXct(secs, origin = '1970-1-1', 
+			tz = 'UTC'), format = '%Y-%m-%d %H:%M:%OS', 
+			tz = 'UTC', usetz = FALSE), tz = timez))
+}
+ 
+```
+
+
+```{r}
+getwd()
+dir <- "../../../../Dropbox/VivesiACC/matlab/"
+out <- "../../../../Dropbox/VivesiACC/data/clean/NewFilesforMark/ACCMag/"
+
+files <- list.files(path = dir, pattern = ".csv", full.names = TRUE)
+short <- list.files(path = dir, pattern = ".csv", full.names = FALSE)
+
+i = 1
+for(i in 1:length(files)){
+  acc <- {}
+  acc <- fread(files[i])  
+  acc$time <- as.character(matlab2POS(acc$ACCtime))
+  
+  acc[, c("ACCtime","GYRtime","MAGtime"):=NULL] 
+  
+  fwrite(x = acc, 
+         file = paste0("../../../../Dropbox/VivesiACC/data/clean/NewFilesforMark/ACCMag/new/clean_", 
+                     substr(short[i], 6, nchar(short[i]))))
+}
+
+
+```
+

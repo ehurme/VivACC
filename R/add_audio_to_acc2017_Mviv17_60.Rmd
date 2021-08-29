@@ -133,16 +133,50 @@ with(m17_60[10000:100000,],
 
 ```
 
+# get cumsum for calls
+```{r}
+m17_60$echo <- with(m17_60, ave(call, cumsum(call == 0), FUN = cumsum))
+## [1] 1 0 1 2
+
+```
+
+
+```{r}
+idx <- which(m17_60$buzz == 1)
+buffer <- 80
+s <- seq(500, 1000, by = 50)
+
+for(i in s){
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     plot(datetime, scale(ACCX, center = 5)+10, type = "l", ylim = c(0, 20)))
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     lines(datetime, scale(ACCY, center = 5)+10, col = 4))
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     lines(datetime, scale(ACCZ, center = 5)+10, col = "orange"))
+  
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     points(datetime, y = buzz*5, type = "o", col = "red", pch = 16, cex = 1))
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     points(datetime, y = (echo), col = "green", pch = 16, type = "o",
+            cex = 1/(call+1)))
+  legend("topright", legend = c("ACCX", "ACCY", "ACCZ", "echo", "buzz"), 
+         col = c(1, 4, "orange", "green", 2), pch = 16)
+}
+
+
+```
+
+
 # save data
 ```{r}
 save(m17_60, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
-     file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_60_complete.robj")
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_60_complete.robj")
+     file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_60_complete.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_60_complete.robj")
 
 ```
 
 # write csv
 ```{r}
-write.csv(m17_60, file = "C:/Users/Edward/Dropbox/VivesiACC/data/clean/Audio/Mviv17_60_ACC_Call.csv")
+write.csv(m17_60, file = "../../../../Dropbox/VivesiACC/data/clean/Audio/Mviv17_60_ACC_Call.csv")
 ```
 
