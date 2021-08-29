@@ -242,6 +242,6 @@ load("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_38_compl
 
 # write csv
 ```{r}
-write.csv(m17_38, file = "C:../../../../Dropbox/VivesiACC/data/clean/Audio/Mviv17_38_ACC_Call.csv")
+write.csv(m17_38, file = "../../../../Dropbox/VivesiACC/data/clean/Audio/Mviv17_38_ACC_Call.csv")
 ```
 
