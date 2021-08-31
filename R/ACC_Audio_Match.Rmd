@@ -1,0 +1,55 @@
+---
+title: "ACC Audio Match"
+author: "Edward hurme"
+date: "8/31/2021"
+output: html_document
+---
+
+# load libraries
+```{r}
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+
+lubridate::intersect()
+```
+
+# audio times
+```{r}
+path_audio
+files <- list.files()
+audio_times <- data.frame(start_time, end_time, filename = files)
+```
+
+# acc times
+```{r}
+path_acc
+list.files()
+
+```
+
+# cut audio into 0.5 second files
+
+# do those intervals fall within the acc times?
+```{r}
+lubridate::intersect()
+lubridate::interval()
+
+library("lubridate")
+preg_start<-as.Date(c("2011-01-01","2012-01-01","2013-01-01"))
+preg_end<-preg_start+270 # end after 9 months
+smoke_start<-as.Date(c("2011-02-01","2012-08-01","2014-01-01"))
+smoke_end<-smoke_start+100 # all three smoked 100 days
+
+smoke <- interval(smoke_start, smoke_end, tzone="UTC")
+preg <- interval(preg_start, preg_end, tzone="UTC")
+day(as.period(intersect(smoke, preg), "days"))
+tim
+```
+
+```{r}
+library(timetools)
+# https://cran.r-project.org/web/packages/timetools/timetools.pdf
+overlapping()
+```
+

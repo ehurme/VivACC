@@ -14,12 +14,13 @@ library(janitor)
 library(ggplot2)
 require(PBSmapping)
 library(vroom)
+library(zoo)
 op <- options(digits.secs=3)
 ```
 
 ### read audio data
 ```{r}
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Audio/Mviv17_60_calls.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Audio/Mviv17_60_calls.robj")
 Mv18_summary$Local_Time <- Mv18_summary$time -7*3600
 
 Mv18_main$time <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(Mv18_main$file))
@@ -51,7 +52,90 @@ with(Mv18_summary, points(time-7*3600, echo/10+15, col = "orange"))
 with(Mv18_summary, points(time-7*3600, buzz*3, col = 2))
 
 Mv18_summary$time[1]
+
+Mv18_main <- read.csv("../../../../Dropbox/VivesiACC/data/Audio/Mv17_60_main_calls_avisoft.csv")
+Mv18_main$time <- ymd_hms(Mv18_main$time)
 ```
+
+
+```{r}
+Mv18 <- Mv18_main#[1:100000,]
+
+Mv18 <- Mv18 %>% mutate(ints = cut(start_time, breaks = seq(0,40, by = 0.5), 
+                           include.lowest = TRUE, labels = FALSE)) 
+Mv18 %>% group_by(time, file, ints) %>% 
+  dplyr::summarise(duration = mean(duration),
+            interval = mean(interval, na.rm = TRUE),
+            start_amp = mean(start_amp),
+            peak_amp = mean(peak_amp),
+            end_amp = mean(end_amp),
+            calls = length(file)) -> Mv18_ints
+  
+plot(Mv18_ints$time, Mv18_ints$calls)
+plot(Mv18_ints$start_amp)
+plot(Mv18_ints$peak_amp)
+plot(Mv18_ints$end_amp)
+plot(Mv18_ints$duration)
+plot(Mv18_ints$interval, ylim = c(0,1))
+
+Mv18_ints <- Mv18_ints %>% mutate(behav = ifelse(duration > 0.008 & calls < 6 & 
+                                                   peak_amp > -5 & interval > 0.1, 
+                                                 "forage", "commute"))
+
+plot(Mv18_ints$time, Mv18_ints$calls, col = as.numeric(as.factor(Mv18_ints$behav)))
+plot(Mv18_ints$duration, col = as.numeric(as.factor(Mv18_ints$behav)))
+plot(Mv18_ints$peak_amp, col = as.numeric(as.factor(Mv18_ints$behav)))
+plot(Mv18_ints$interval, ylim = c(0,1), col = as.numeric(as.factor(Mv18_ints$behav)))
+
+rle(Mv18_ints$behav)
+
+
+plot(Mv18_ints$time-7*3600, rollmean(Mv18_ints$interval, k = 20, na.pad = TRUE), 
+     # type = "o", 
+     ylim = c(0,1), col = as.numeric(as.factor(Mv18_ints$behav)),
+     cex = 0.2)
+```
+
+# buzz audio snippets
+```{r}
+buzz_files <- list.files("../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_60/Buzz")
+buzz_times <- data.frame(start_time, end_time, filename = buzz_files)
+
+for(i in 1:length(Mv18_main$file)){
+  split <- NA
+  hour <- NA 
+  min <- NA
+  sec <- NA
+  end <- NA
+  part <- NA
+  
+  split <- strsplit(Mv18_main$file[i], split = "_")
+  year <- 2017
+  month <- as.numeric(split[[1]][2])
+  day <- as.numeric(split[[1]][3])
+  hour <- as.numeric(split[[1]][4])
+  min <- as.numeric(split[[1]][5])
+  sec <- as.numeric(split[[1]][6])
+  
+  Mv18_main$time[i] <- 
+    ymd(paste0(year,"-",month, "-", day))+hours(hour)+minutes(min)+
+    seconds(sec)
+}
+
+```
+
+# roost audio snippets
+```{r}
+roost_files <- 1:4800
+
+set.seed(1)
+round(runif(min = 0, max = length(roost_files), n = 2100), 0) %>% unique()
+
+
+```
+
+
+
 
 
 # load latest ACC data
@@ -133,40 +217,6 @@ with(m17_60[10000:100000,],
 
 ```
 
-# get cumsum for calls
-```{r}
-m17_60$echo <- with(m17_60, ave(call, cumsum(call == 0), FUN = cumsum))
-## [1] 1 0 1 2
-
-```
-
-
-```{r}
-idx <- which(m17_60$buzz == 1)
-buffer <- 80
-s <- seq(500, 1000, by = 50)
-
-for(i in s){
-  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
-     plot(datetime, scale(ACCX, center = 5)+10, type = "l", ylim = c(0, 20)))
-  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
-     lines(datetime, scale(ACCY, center = 5)+10, col = 4))
-  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
-     lines(datetime, scale(ACCZ, center = 5)+10, col = "orange"))
-  
-  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
-     points(datetime, y = buzz*5, type = "o", col = "red", pch = 16, cex = 1))
-  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
-     points(datetime, y = (echo), col = "green", pch = 16, type = "o",
-            cex = 1/(call+1)))
-  legend("topright", legend = c("ACCX", "ACCY", "ACCZ", "echo", "buzz"), 
-         col = c(1, 4, "orange", "green", 2), pch = 16)
-}
-
-
-```
-
-
 # save data
 ```{r}
 save(m17_60, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
@@ -178,5 +228,9 @@ load("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_60_compl
 # write csv
 ```{r}
 write.csv(m17_60, file = "../../../../Dropbox/VivesiACC/data/clean/Audio/Mviv17_60_ACC_Call.csv")
+```
+
+```{r}
+hm() %>% 
 ```
 
