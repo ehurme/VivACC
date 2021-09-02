@@ -7,49 +7,69 @@ output: html_document
 
 # load libraries
 ```{r}
-library(tidyverse)
-library(lubridate)
-library(dplyr)
-
-lubridate::intersect()
+library(pacman)
+p_load(lubridate, tidyverse, dplyr, timetools, data.table)
+op <- options(digits.secs=3)
 ```
 
 # audio times
 ```{r}
-path_audio
-files <- list.files()
-audio_times <- data.frame(start_time, end_time, filename = files)
+path_audio <- "C:/Users/edwar/Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_49/Full"
+files <- list.files(path_audio)
+audio_times <- data.frame(files)
+file <- files[1]
+get_start_time <- function(file, year = 2017, ...){
+  split <- strsplit(file, split = "_")
+  month <- as.numeric(split[[1]][4])
+  day <- as.numeric(split[[1]][5])
+  hour <- as.numeric(split[[1]][6])
+  min <- as.numeric(split[[1]][7])
+  sec <- as.numeric(split[[1]][8])
+  
+  start <- ymd(paste0(year,"-",month, "-", day))+hours(hour)+minutes(min)+
+    seconds(sec)
+  return(as.character(start)) 
+}
+
+get_end_time <- function(file, year = 2017, ...){
+  split <- strsplit(file, split = "_")
+  end <- NA
+  if(length(split[[1]]) > 10){
+    month <- as.numeric(split[[1]][10])
+    day <- as.numeric(split[[1]][11])
+    hour <- as.numeric(split[[1]][12])
+    min <- as.numeric(split[[1]][13])
+    sec <- as.numeric(split[[1]][14])
+  
+    end <- ymd(paste0(year,"-",month, "-", day))+hours(hour)+minutes(min)+
+    seconds(sec)  
+  }
+  return(as.character(end)) 
+}
+
+audio_times$start <- ymd_hms(sapply(X = files, FUN = get_start_time))-7*3600
+audio_times$end <- ymd_hms(sapply(X = files, FUN = get_end_time))-7*3600
 ```
+
+```{r}
+audio_times$interval <- POSIXcti(audio_times$start, audio_times$end, timezone='UTC')
+```
+
 
 # acc times
 ```{r}
-path_acc
+path_acc <- "../../../../Dropbox/Vivesi2017/Vesper_Data/"
 list.files()
-
 ```
 
 # cut audio into 0.5 second files
 
 # do those intervals fall within the acc times?
 ```{r}
-lubridate::intersect()
-lubridate::interval()
-
-library("lubridate")
-preg_start<-as.Date(c("2011-01-01","2012-01-01","2013-01-01"))
-preg_end<-preg_start+270 # end after 9 months
-smoke_start<-as.Date(c("2011-02-01","2012-08-01","2014-01-01"))
-smoke_end<-smoke_start+100 # all three smoked 100 days
-
-smoke <- interval(smoke_start, smoke_end, tzone="UTC")
-preg <- interval(preg_start, preg_end, tzone="UTC")
-day(as.period(intersect(smoke, preg), "days"))
-tim
-```
-
-```{r}
 library(timetools)
 # https://cran.r-project.org/web/packages/timetools/timetools.pdf
+
+
 overlapping()
 ```
 
