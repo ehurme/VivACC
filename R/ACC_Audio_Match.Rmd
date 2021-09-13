@@ -12,64 +12,99 @@ p_load(lubridate, tidyverse, dplyr, timetools, data.table)
 op <- options(digits.secs=3)
 ```
 
-# audio times
+# paths
 ```{r}
-path_audio <- "C:/Users/edwar/Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_49/Full"
-files <- list.files(path_audio)
-audio_times <- data.frame(files)
-file <- files[1]
-get_start_time <- function(file, year = 2017, ...){
+# # Mviv17_49
+# path_audio <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_49/Full"
+# path_acc <- "../../../../Dropbox/Vivesi2017/Vesper_Data/20170623/Mviv17_49/parsed/"
+# # Mviv17_46
+# path_audio <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_46/Full/"
+# path_acc <- "../../../../Dropbox/Vivesi2017/Vesper_Data/20170622/Mviv17_46_ST/parsed/"
+
+# Mviv17_41
+path_audio <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_41/Full/"
+path_acc <- "../../../../Dropbox/Vivesi2017/Vesper_Data/20170621/Mviv17_41_ST/parsed/"
+```
+
+## get time functions
+```{r}
+get_start_time <- function(file, year = 2017, offset,...){
   split <- strsplit(file, split = "_")
-  month <- as.numeric(split[[1]][4])
-  day <- as.numeric(split[[1]][5])
-  hour <- as.numeric(split[[1]][6])
-  min <- as.numeric(split[[1]][7])
-  sec <- as.numeric(split[[1]][8])
+  month <- as.numeric(split[[1]][offset+1])
+  day <- as.numeric(split[[1]][offset+2])
+  hour <- as.numeric(split[[1]][offset+3])
+  min <- as.numeric(split[[1]][offset+4])
+  sec <- as.numeric(split[[1]][offset+5])
   
   start <- ymd(paste0(year,"-",month, "-", day))+hours(hour)+minutes(min)+
     seconds(sec)
   return(as.character(start)) 
 }
 
-get_end_time <- function(file, year = 2017, ...){
+get_end_time <- function(file, year = 2017, offset,...){
   split <- strsplit(file, split = "_")
   end <- NA
   if(length(split[[1]]) > 10){
-    month <- as.numeric(split[[1]][10])
-    day <- as.numeric(split[[1]][11])
-    hour <- as.numeric(split[[1]][12])
-    min <- as.numeric(split[[1]][13])
-    sec <- as.numeric(split[[1]][14])
+    month <- as.numeric(split[[1]][offset+7])
+    day <- as.numeric(split[[1]][offset+8])
+    hour <- as.numeric(split[[1]][offset+9])
+    min <- as.numeric(split[[1]][offset+10])
+    sec <- as.numeric(split[[1]][offset+11])
   
     end <- ymd(paste0(year,"-",month, "-", day))+hours(hour)+minutes(min)+
     seconds(sec)  
   }
   return(as.character(end)) 
 }
-
-audio_times$start <- ymd_hms(sapply(X = files, FUN = get_start_time))-7*3600
-audio_times$end <- ymd_hms(sapply(X = files, FUN = get_end_time))-7*3600
 ```
 
+# audio times
 ```{r}
+files <- list.files(path_audio)
+audio_times <- data.frame(files)
+
+audio_times$start <- ymd_hms(sapply(X = files, FUN = get_start_time, offset = 3))-7*3600
+audio_times$end <- ymd_hms(sapply(X = files, FUN = get_end_time, offset = 3))-7*3600
 audio_times$interval <- POSIXcti(audio_times$start, audio_times$end, timezone='UTC')
 ```
 
-
 # acc times
 ```{r}
-path_acc <- "../../../../Dropbox/Vivesi2017/Vesper_Data/"
-list.files()
-```
+acc_files <- list.files(path_acc, pattern = "A17*")
+acc_times <- data.frame(acc_files)
 
-# cut audio into 0.5 second files
+acc_times$start <- ymd_hms(sapply(X = acc_files, FUN = get_start_time, offset = 1))-7*3600
+acc_times$end <- ymd_hms(sapply(X = acc_files, FUN = get_end_time, offset = 1))-7*3600
+acc_times$interval <- POSIXcti(acc_times$start, acc_times$end, timezone='UTC')
+```
 
 # do those intervals fall within the acc times?
 ```{r}
 library(timetools)
 # https://cran.r-project.org/web/packages/timetools/timetools.pdf
 
+audio_times$overlap <- NA
+for(i in 1:nrow(audio_times)){
+  try(audio_times$overlap[i] <- audio_times$interval[i] %included%
+acc_times$interval %>% which)
+}
 
-overlapping()
+audio_times$overlap %>% unique
+audio_times$overlap %>% is.na %>% which
 ```
 
+```{r}
+# time interval : january of year 2013
+  jan <- POSIXcti('2013-01-01', '2013-02-01')
+  jan
+
+  # the complete year
+  y2013 <- POSIXcti('2013-01-01', '2014-01-01')
+  y2013
+
+  # is jan in 2013 ?
+  jan %included% y2013
+
+  # intersection
+  jan %intersect% y2013
+```
