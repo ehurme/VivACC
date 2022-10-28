@@ -19,7 +19,7 @@ op <- options(digits.secs=3)
 
 ### read audio data
 ```{r}
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Audio/Mviv17_38_calls.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Audio/Mviv17_38_calls.robj")
 Mv18_summary$Local_Time <- Mv18_summary$time -7*3600
 
 Mv18_main$time <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(Mv18_main$file))
@@ -56,7 +56,7 @@ Mv18_summary$time[1]
 
 # load latest ACC data
 ```{r}
-m17_38 <- read.csv("C:/Users/Edward/Dropbox/VivesiACC/data/clean/clean_ACC_Mviv17_38.csv")
+m17_38 <- read.csv("C:../../../../Dropbox/VivesiACC/data/clean/clean_ACC_Mviv17_38.csv")
 m17_38$datetime <- as.POSIXct(m17_38$time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
 
 ```
@@ -86,7 +86,7 @@ m17_38$datetime[start_idx]
 
 ## get buzz times
 ```{r}
-spec <- "C:/Users/Edward/Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_38/Buzz/"
+spec <- "C:../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_38/Buzz/"
 files <- list.files(path = spec)
 
 buzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
@@ -138,6 +138,97 @@ for(i in 1:length(buzz_times)){
 with(m17_38, plot(datetime, buzz))
 with(m17_38[500000:700000,], 
      plot(datetime, ACCY, col = call+buzz+1, cex = call+buzz+1/2,  type = "o", pch = 16))
+
+```
+
+## get almost buzz times
+```{r}
+spec <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_38/AlmostBuzz/"
+files <- list.files(path = spec)
+
+almost_buzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
+i = 292     
+for(i in 1:length(files)){
+  split <- NA
+  hour <- NA 
+  min <- NA
+  sec <- NA
+  end <- NA
+  part <- NA
+  j = 0
+  split <- strsplit(files[i], split = "_")
+  if(length(split[[1]]) > 16){j = 1}
+  if(length(split[[1]]) == 11){j = 1}
+  year <- 2017
+  month <- as.numeric(split[[1]][4+j])
+  day <- as.numeric(split[[1]][5+j])
+  hour <- as.numeric(split[[1]][6+j])
+  min <- as.numeric(split[[1]][7+j])
+  sec <- as.numeric(split[[1]][8+j])
+  k = 0
+  end <- (split[[1]][length(split[[1]])-k])
+  part <- as.numeric(substr(end, 1, nchar(end)-4))
+  
+  if(length(split[[1]]) == 18){
+    k = 1
+    end <- (split[[1]][length(split[[1]])-k])
+    part <- as.numeric(end)
+  }
+  
+  almost_buzz_times[i] <- 
+    ymd(paste0(year,"-",month, "-", day))+hours(hour)+minutes(min)+
+    seconds(sec)+seconds((part-1)/2)
+}
+```
+
+## add almost buzz to acc
+```{r}
+almost_buzz_times <- na.omit(almost_buzz_times)
+m17_38$almost_buzz <- 0
+i = 1
+for(i in 1:length(almost_buzz_times)){
+  idx <- which.min(abs(m17_38$datetime-(almost_buzz_times[i]-7*3600)))
+  m17_38$almost_buzz[idx:(idx+25)] <- 1
+}
+
+
+with(m17_38, plot(datetime, almost_buzz))
+with(m17_38[500000:700000,], 
+     plot(datetime, ACCY, col = call+almost_buzz+1, cex = call+almost_buzz+1/2,  type = "o", pch = 16))
+
+```
+
+
+# get cumsum for calls
+```{r}
+m17_60$echo <- with(m17_60, ave(call, cumsum(call == 0), FUN = cumsum))
+## [1] 1 0 1 2
+
+```
+
+
+```{r}
+idx <- which(m17_60$buzz == 1)
+buffer <- 80
+s <- seq(500, 1000, by = 50)
+
+for(i in s){
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     plot(datetime, scale(ACCX, center = 5)+10, type = "l", ylim = c(0, 20)))
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     lines(datetime, scale(ACCY, center = 5)+10, col = 4))
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     lines(datetime, scale(ACCZ, center = 5)+10, col = "orange"))
+  
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     points(datetime, y = buzz*5, type = "o", col = "red", pch = 16, cex = 1))
+  with(m17_60[(idx[i]-buffer):(idx[i]+buffer),], 
+     points(datetime, y = (echo), col = "green", pch = 16, type = "o",
+            cex = 1/(call+1)))
+  legend("topright", legend = c("ACCX", "ACCY", "ACCZ", "echo", "buzz"), 
+         col = c(1, 4, "orange", "green", 2), pch = 16)
+}
+
 
 ```
 

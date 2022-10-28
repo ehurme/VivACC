@@ -19,7 +19,7 @@ op <- options(digits.secs=3)
 
 ### read audio data
 ```{r}
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Audio/Mviv17_41_calls.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Audio/Mviv17_41_calls.robj")
 Mv18_summary$Local_Time <- Mv18_summary$time -7*3600
 
 Mv18_main$time <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(Mv18_main$file))
@@ -56,7 +56,7 @@ Mv18_summary$time[1]
 
 # load latest ACC data
 ```{r}
-m17_41 <- read.csv("C:/Users/Edward/Dropbox/VivesiACC/data/clean/clean_ACC_Mviv17_41.csv")
+m17_41 <- read.csv("C:../../../../Dropbox/VivesiACC/data/clean/clean_ACC_Mviv17_41.csv")
 m17_41$datetime <- as.POSIXct(m17_41$time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
 
 ```
@@ -86,7 +86,7 @@ m17_41$datetime[start_idx]
 
 ## get buzz times
 ```{r}
-spec <- "C:/Users/Edward/Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_41/Buzz/"
+spec <- "C:../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_41/Buzz/"
 files <- list.files(path = spec)
 
 buzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
@@ -144,13 +144,13 @@ with(m17_41[500000:700000,],
 # save data
 ```{r}
 save(m17_41, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
-     file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_41_complete.robj")
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_41_complete.robj")
+     file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_41_complete.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv17_41_complete.robj")
 
 ```
 
 # write csv
 ```{r}
-write.csv(m17_41, file = "C:/Users/Edward/Dropbox/VivesiACC/data/clean/Audio/Mviv17_41_ACC_Call.csv")
+write.csv(m17_41, file = "C:../../../../Dropbox/VivesiACC/data/clean/Audio/Mviv17_41_ACC_Call.csv")
 ```
 
