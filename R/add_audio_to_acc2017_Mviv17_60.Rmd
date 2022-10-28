@@ -24,7 +24,7 @@ Mv18_summary$Local_Time <- Mv18_summary$time -7*3600
 
 Mv18_main$time <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(Mv18_main$file))
 
-for(i in 1:length(Mv18_main$file)){
+for(i in 13001:length(Mv18_main$file)){
   split <- NA
   hour <- NA 
   min <- NA
@@ -51,6 +51,42 @@ with(Mv18_summary, points(time-7*3600, echo/10+15, col = "orange"))
 with(Mv18_summary, points(time-7*3600, buzz*3, col = 2))
 
 Mv18_summary$time[1]
+```
+
+
+```{r}
+Mv18 <- Mv18_main[1:13000,]
+
+Mv18 <- Mv18 %>% mutate(ints = cut(start_time, breaks = seq(0,40, by = 0.5), 
+                           include.lowest = TRUE, labels = FALSE)) 
+Mv18 %>% group_by(time, file, ints) %>% 
+  dplyr::summarise(duration = mean(duration),
+            interval = mean(interval, na.rm = TRUE),
+            start_amp = mean(start_amp),
+            peak_amp = mean(peak_amp),
+            end_amp = mean(end_amp),
+            calls = length(file)) -> Mv18_ints
+  
+plot(Mv18_ints$time,Mv18_ints$calls)
+plot(Mv18_ints$start_amp)
+plot(Mv18_ints$peak_amp)
+plot(Mv18_ints$end_amp)
+plot(Mv18_ints$duration)
+plot(Mv18_ints$interval, ylim = c(0,1))
+
+Mv18_ints <- Mv18_ints %>% mutate(behav = ifelse(duration > 0.008 & calls < 6 & 
+                                                   peak_amp > -5 & interval > 0.1, 
+                                                 "forage", "commute"))
+
+plot(Mv18_ints$time, Mv18_ints$calls, col = as.numeric(as.factor(Mv18_ints$behav)))
+plot(Mv18_ints$duration, col = as.numeric(as.factor(Mv18_ints$behav)))
+plot(Mv18_ints$peak_amp, col = as.numeric(as.factor(Mv18_ints$behav)))
+plot(Mv18_ints$interval, ylim = c(0,1), col = as.numeric(as.factor(Mv18_ints$behav)))
+
+rle(Mv18_ints$behav)
+
+library(zoo)
+rollmean(Mv18_ints$calls, k = 20, )
 ```
 
 

@@ -1,0 +1,27 @@
+---
+title: "Altitude"
+output: html_document
+---
+
+```{r}
+library(pacman)
+p_load(lubridate, dplyr, tidyverse, data.table, vroom)
+```
+# read barometric pressure data
+```{r}
+baro <- fread("../../../../Dropbox/Vivesi2018/Analysis/Baro/Original_Data/Mviv18_Altitudes.csv")
+
+start_time <- ymd_hm(paste(baro$Year[1], '/', baro$Month[1], '/', baro$Day[1], " ", baro$Hour[1], ':', baro$Minute[1]))
+baro$Local_Time <- start_time + baro$Minute*60
+
+```
+
+```{r}
+with(baro[2650:3200,], plot(Local_Time, ALT_Mviv18_02, main = "Mviv18_02", type = "o"))
+with(baro[4000:4800,], plot(Local_Time, ALT_Mviv18_03, main = "Mviv18_03"))
+with(baro[4050:4700,], plot(Local_Time, ALT_Mviv18_04, main = "Mviv18_04"))
+with(baro[8300:10000,], plot(Local_Time, ALT_Mviv18_05, main = "Mviv18_05"))
+with(baro[8200:10000,], plot(Local_Time, ALT_Mviv18_06, main = "Mviv18_06"))
+with(baro[8300:10000,], plot(Local_Time, ALT_Mviv18_07, main = "Mviv18_07"))
+```
+

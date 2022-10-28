@@ -66,9 +66,12 @@ for(i in 1:length(na.omit(buzz_times$true_buzz))){
     which.min(abs(Metrics$datetime - (buzz_times$true_buzz[i] + 0.25)))
   Metrics$true_buzz[true_start:true_end] <- 1
   
+  ## plot each buzz
   buff <- 200
+  # png()
   with(Metrics[(buzz-buff):(buzz+buff),], plot(datetime, VeDBA.smoothed, cex = 0.5, pch = 16, 
                                              type = "o", col = call+1,
+                                             main = unique(buzz_times$file[i]),
                                              ylim = c(-5, #max(VeDBA.smoothed))
                                                       3)))
   with(Metrics[(buzz-buff):(buzz+buff),], points(datetime, VeSBA.smoothed, cex = 0.5, 
@@ -77,6 +80,7 @@ for(i in 1:length(na.omit(buzz_times$true_buzz))){
                                              y = rep(-3, length(true_start:true_end))))
   with(Metrics[(buzz-buff):(buzz+buff),], points(datetime, y = rep(-5, buff*2+1), col = buzz*3))
   abline(v = buzz_times$true_buzz[i], lty = 3)
+  # dev.off()
 }
 ```
 
