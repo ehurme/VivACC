@@ -13,7 +13,7 @@ op <- options(digits.secs=3)
 
 ### read barometric pressure data
 ```{r}
-baro <- vroom("/Users/Edward/Dropbox/Vivesi2018/Analysis/Baro/Original_Data/Mviv18_Altitudes.csv", delim = ",")
+baro <- vroom("../../../../Dropbox/Vivesi2018/Analysis/Baro/Original_Data/Mviv18_Altitudes.csv", delim = ",")
 
 start_time <- ymd_hm(paste(baro$Year[1], '/', baro$Month[1], '/', baro$Day[1], " ", baro$Hour[1], ':', baro$Minute[1]))
 baro$Local_Time <- start_time + baro$Minute*60
@@ -38,15 +38,15 @@ baro$ALT_Mviv18_06[1:7000] %>% hist(breaks = 200)
 
 ### read gps data
 ```{r}
-gps <- fread("/Users/Edward/Dropbox/Vivesi2018/VesperDecodings_IslaPartida/18_06/gps/decode/Track-geoTag.csv", header = TRUE) %>% clean_names
+gps <- fread("../../../../Dropbox/Vivesi2018/Tracks/Mviv18_06_ST.csv", header = TRUE) %>% clean_names
 
-gps$datetime <- ymd_hms(paste0(gps$date, " ", gps$utc))
+gps$datetime <- dmy_hms(gps$time_str)
 gps$Local_Time <- gps$datetime - 7*3600
 
-plot(gps$Local_Time, gps$altitude_m+40, type = "l")
+plot(gps$Local_Time, gps$ellipsoid+40, type = "l")
 lines(baro$Local_Time, baro$ALT_Mviv18_06, col = 2)
 
-ll <- with(gps, data.frame(X = longitude_dd, Y = latitude_dd))
+ll <- with(gps, data.frame(X = lon, Y = lat))
 attributes(ll)$projection <- "LL"
 xy <- convUL(ll, km=FALSE)
 gps$X <- xy[,1]
@@ -152,19 +152,19 @@ ggplot(aes(x = X, y = Y, col = echo), data = gps)+ geom_path(size = 2)+scale_col
 # load acc
 op <- options(digits.secs=3)
 
-acc <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_Mviv18_06.csv")
-gyro <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Gyr_Mviv18_06.csv")
-mag <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mag_Mviv18_06.csv")
+acc <- fread("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_Mviv18_06.csv")
+gyro <- fread("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Gyr_Mviv18_06.csv")
+mag <- fread("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mag_Mviv18_06.csv")
 
 A <- full_join(acc, gyro)
 A <- full_join(A, mag)
-write.csv(A, file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/All_Mviv18_06.csv")
+write.csv(A, file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/All_Mviv18_06.csv")
 
 ```
 
 # read spectrogram
 ```{r}
-spec <- "C:/Users/Edward/Dropbox/VivesiAudio/BuzzCheck/Mviv18/Mviv18_06/buzz/"
+spec <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv18/Mviv18_06/buzz/"
 files <- list.files(path = spec)
 
 buzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
@@ -194,7 +194,7 @@ for(i in 1:length(files)){
 
 # read almost buzz times
 ```{r}
-spec <- "C:/Users/Edward/Dropbox/VivesiAudio/BuzzCheck/Mviv18/Mviv18_06/AlmostBuzz/"
+spec <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv18/Mviv18_06/AlmostBuzz/"
 files <- list.files(path = spec)
 
 abuzz_times <- rep(ymd_hms("2020-01-01 00:00:00.000"), length(files))
@@ -226,9 +226,9 @@ for(i in 1:length(files)){
 ```{r}
 op <- options(digits.secs=3)
 
-acc <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_Mviv18_06.csv")
-gyro <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Gyr_Mviv18_06.csv")
-mag <- fread("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mag_Mviv18_06.csv")
+acc <- fread("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_Mviv18_06.csv")
+gyro <- fread("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Gyr_Mviv18_06.csv")
+mag <- fread("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mag_Mviv18_06.csv")
 
 
 ```
@@ -285,6 +285,8 @@ with(acc,#[499000:500000,],
      plot(datetime, x, col = call+1, type = "o", pch = 16))
 
 ```
+
+
 # add almost buzz to acc
 ```{r}
 acc$almostbuzz <- 0
@@ -318,12 +320,12 @@ with(acc[590000:592000,], plot(datetime, x, col = rgb(call, 0,0,.3), pch = 16, t
 ```{r}
 A <- full_join(acc, gyro)
 A <- full_join(A, mag)
-write.csv(A, file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_buzz_Mviv18_06.csv")
+write.csv(A, file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_buzz_Mviv18_06.csv")
 ```
 
 # load latest ACC data
 ```{r}
-m18_06 <- read.csv("C:/Users/Edward/Dropbox/VivesiACC/data/clean/clean_ACC_Mviv18_06.csv")
+m18_06 <- read.csv("../../../../Dropbox/VivesiACC/data/clean/clean_ACC_Mviv18_06.csv")
 m18_06$datetime <- as.POSIXct(m18_06$time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
 
 ```
@@ -405,8 +407,8 @@ rle(m18_06$call)
 # save data
 ```{r}
 save(m18_06, A, acc, gyro, mag, baro, gps, Mv18_main, Mv18_buzz, Mv18_cons, Mviv18, Mv18_summary, 
-     file = "/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
+     file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/Mviv18_06_complete.robj")
 
 ```
 

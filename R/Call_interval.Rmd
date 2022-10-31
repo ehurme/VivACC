@@ -6,31 +6,391 @@ date: "2022-10-31"
 
 ```{r}
 library(pacman)
-p_load(tidyverse, bcpa, tidyr, data.table, lubridate, janitor, ggplot2, PBSmapping, vroom, bayesmix)
+p_load(tidyverse, bcpa, tidyr, data.table, # stats
+       lubridate, janitor, ggplot2, 
+       PBSmapping, vroom, bayesmix, mixtools)
 op <- options(digits.secs=3)
 ```
 
-```{r}
-data("fish", package = "bayesmix") 
-priors <- BMMpriors(y = fish)
-```
 
-
+# load data
 ```{r}
 load("../../../../Dropbox/Vivesi2018/Analysis/Audio/Mviv18_06_calls.robj")
-hist(Mv18_main$interval, breaks = 10000, xlim = c(0,0.5))
-plot(Mv18_main$peak_amp, Mv18_main$duration)
+
 ```
-# clean IPI
+
+## get buzz times
 ```{r}
+bat <- "Mviv17_38"
+
+load(paste0("../../../../Dropbox/Vivesi2018/Analysis/Audio/", bat, "_calls.robj"))
+# get buzz clip times
+buzz_clips <- list.files(paste0("C:/Users/Edward/Dropbox/VivesiAudio/BuzzCheck/Mviv17/", bat,"/Buzz"))
+split_time <- strsplit(buzz_clips, split = "_")
+buzz_times <- data.frame(file = buzz_clips,
+  start_clip = ymd_hms("2000-01-01 12:00:00.001"), 
+                                          segment = NA)
+
+for(i in 1:length(split_time)){
+  buzz_times$start_clip[i] <- ymd_hms(paste0("2017-", split_time[[i]][4],"-", split_time[[i]][5], " ",
+                               split_time[[i]][6],":",split_time[[i]][7], ":", 
+                               split_time[[i]][8]))
+  buzz_times$segment[i] <- as.numeric(substr(split_time[[i]][16], 1, nchar(split_time[[i]][16])-4))  
+}
+buzz_times$segment[which(is.na(buzz_times$segment))] <- 0
+buzz_times$rough_buzz <- buzz_times$start_clip + # buzz_times$offset + 
+  buzz_times$segment*0.5
+
 df <- data.table(time = Mv18_main$time+Mv18_main$start_time,
                  ipi = Mv18_main$interval, 
                  duration = Mv18_main$duration,
-                 peak_amp = Mv18_main$peak_amp) %>% na.omit
-df %>% filter(peak_amp > -12 & ipi > 0.005) -> df_clean
-first <- 1:round(nrow(df_clean)/2,0)
-second <- (max(first)+1):nrow(df_clean)
-hist(df_clean$ipi[first], breaks = 1000)
+                 peak_amp = Mv18_main$peak_amp,
+                 peak_freq = Mv18_main$peak_freq) %>% na.omit
+df$quarters <- seq(0.5001,4.4999,length = nrow(df)) %>% round(0)
+table(df$quarters)
+```
+
+
+```{r}
+ggplot(df, aes(x = time, y = ipi))+
+  geom_point(aes(col = factor(quarters)), alpha = 0.01)+
+  geom_smooth()+ylim(c(0,0.3))+
+  geom_point(data = buzz_times, 
+             aes(x = rough_buzz, y = 0), col = 2, size = 0.1, inherit.aes = FALSE)
+```
+
+```{r}
+ggplot(df, aes(x = time, y = duration))+
+  geom_point(aes(col = factor(quarters)), alpha = 0.01)+
+  geom_smooth()+ylim(c(0,0.015))+
+  geom_point(data = buzz_times, 
+             aes(x = rough_buzz, y = 0), col = 2, size = 0.1, inherit.aes = FALSE)
+```
+```{r}
+ggplot(df, aes(x = time, y = peak_amp))+
+  geom_point(aes(col = factor(quarters)), alpha = 0.01)+
+  geom_smooth()+
+  geom_point(data = buzz_times, 
+             aes(x = rough_buzz, y = 0), col = 2, size = 0.1, inherit.aes = FALSE)
+```
+```{r}
+ggplot(df, aes(x = time, y = peak_freq))+
+  geom_point(aes(col = factor(quarters)), alpha = 0.01)+
+  geom_smooth()+
+  geom_point(data = buzz_times, 
+             aes(x = rough_buzz, y = 0), col = 2, size = 0.1, inherit.aes = FALSE)
+```
+
+
+# clean data to just loud calls
+## maybe clean to commuting only
+```{r}
+clean_idx1 <- which(df$peak_amp > -5 & df$duration > 0.005 & 
+                      df$peak_freq > 15000 & df$quarters == 1)
+clean_idx4 <- which(df$peak_amp > -5 & df$duration > 0.005 & 
+                      df$peak_freq > 15000 & df$quarters == 4)
+hist(df$ipi[clean_idx1], breaks = 1000, xlim = c(0,0.5), main = "")
+
+hist(df$ipi[clean_idx4], breaks = 1000, xlim = c(0,0.5), main = "")
+```
+```{r}
+density(df$ipi[clean_idx1], bw = 0.005) %>% plot(main = "", 
+                                                 ylim = c(0,13), 
+                                                 xlim = c(0,0.4))
+density(df$ipi[clean_idx4], bw = 0.005) %>% lines(col = 2)
+# call intervals
+ci <- c(1/4,1/2,3/4,
+           1,2)
+           #3,4,5,6,7,8,9,10)
+wb = 1/c(10:12)
+abline(v = wb, #*ci 
+       lty = 2, col = 3)
+```
+
+
+
+# clean IPI
+```{r}
+# df %>% filter(peak_amp > -12 & ipi > 0.005) -> df_clean
+```
+
+# mixEM model for first 3 peaks
+```{r}
+require("mixtools")
+
+#' Plot a Mixture Component
+#' 
+#' @param x Input data
+#' @param mu Mean of component
+#' @param sigma Standard deviation of component
+#' @param lam Mixture weight of component
+plot_mix_comps <- function(x, mu, sigma, lam) {
+  lam * dnorm(x, mu, sigma)
+}
+
+mixmdl1 <- normalmixEM(df$ipi[which(df$quarters == 1)], k = 5)
+mixmdl2 <- normalmixEM(df$ipi[which(df$quarters == 4)], k = 5)
+plot(mixmdl1, which = 2, breaks = 1000, xlim = c(0,0.5))
+plot(mixmdl2, which = 2, breaks = 1000, xlim = c(0,0.5))
+
+mixmdl1$mu[order(mixmdl1$mu)]-
+mixmdl2$mu[order(mixmdl2$mu)]
+```
+
+# plot first and last quarter ipi densities
+## with mixem peaks
+```{r}
+density(df$ipi[which(df$quarters == 1)], bw = 0.0001) %>% plot(xlim = c(0,0.25), main = "")
+  density(df$ipi[which(df$quarters == 4)], bw = 0.0001) %>% lines(col = 2)
+abline(v = mixmdl1$mu, lty = 2)  
+abline(v = mixmdl2$mu, lty = 2, col = 2)  
+
+1/0.08
+1/0.09
+```
+
+```{r}
+# https://tinyheero.github.io/2015/10/13/mixture-model.html
+data.frame(x = mixmdl1$x) %>%
+  ggplot() + xlim(c(0,0.3))+
+  geom_histogram(aes(x, ..density..), binwidth = 0.001, colour = "black", 
+                 fill = "white") +
+  stat_function(geom = "line", fun = plot_mix_comps,
+                args = list(mixmdl1$mu[1], mixmdl1$sigma[1], lam = mixmdl1$lambda[1]),
+                colour = "red", lwd = 1) +
+  stat_function(geom = "line", fun = plot_mix_comps,
+                args = list(mixmdl1$mu[2], mixmdl1$sigma[2], lam = mixmdl1$lambda[2]),
+                colour = "blue", lwd = 1) +
+   stat_function(geom = "line", fun = plot_mix_comps,
+                args = list(mixmdl1$mu[3], mixmdl1$sigma[3], lam = mixmdl1$lambda[3]),
+                colour = "green", lwd = 1) +
+  ylab("Density")
+```
+
+
+```{r}
+# hist(df$ipi[df$quarters == 1], breaks = 5000, xlim = c(0,0.5))
+density(df$ipi[df$quarters == 1], bw = 0.001) %>% plot(xlim = c(0,0.5))
+
+wb <- 1/12.5 # wingbeat frequency
+# call intervals
+ci <- c(1/8,1/4,
+           1,2,
+           3,4,5)
+wi <- 1/c(1,4,8,16,32,64,128)
+abline(v = ci*wb, col = 2, lwd = 1.5)
+# abline(v = c(.66,.44, .325, .22, .17, .08), col = 3)
 
 ```
 
+# simulate data
+```{r}
+# https://stats.stackexchange.com/questions/10062/which-r-package-to-use-to-calculate-component-parameters-for-a-mixture-model
+
+#Build data vector "x" as a mixture of data from 3 Normal Distributions  
+lwb <- list()
+
+# wing beat frequencies
+Hz <- c(10,11,12)
+wbs <- 1/Hz
+
+# peaks
+ci <- c(1/8,1/4,
+           1,2,
+           3,4,5)
+
+# weights
+wi <- 1/c(2,4,8,16,32,64,128)
+Wi <- wi/sum(wi)
+for(i in 1:length(Hz)){
+  wb <- wbs[i]
+  ipis <- wb*ci
+  x <- {}
+  for(j in 1:7){
+    x <- c(x, rnorm(Wi[j]*10000, mean = wb*ci[j], sd = wb*ci[j]/4) %>% na.omit)
+  }
+  lwb[[Hz[i]]] <- x
+}
+
+density(lwb[[Hz[3]]] %>% na.omit) %>% plot(main = "", col = 3, 
+                                           ylim = c(0, 60), xlim = c(0,0.3))
+density(lwb[[Hz[2]]] %>% na.omit) %>% lines(col = 2)
+density(lwb[[Hz[1]]] %>% na.omit) %>% lines(col = 1)
+abline(v = 1/c(10:12), col = 1:3, lty = 2)
+legend("topright", legend = c("10 Hz", "11 Hz", "12 Hz"), lty = 1, col = 1:3)
+```
+
+```{r}
+density(lwb[[Hz[1]]] %>% na.omit) %>% plot(main = "", col = 1, 
+                                           ylim = c(0, 60), xlim = c(0,0.3))
+abline(v = ipis <- wbs[1]*ci, lty = 2, col = 1:5)
+legend("topright", legend = wbs[1]*ci[1:5], lty = 2, col = 1:5)
+round(Wi, 2)
+```
+
+
+## mixdist
+```{r}
+p_load(mixdist, mclust)
+breaks <- 1000  
+his <- hist(x, breaks=breaks)  
+his.df <- data.frame(mid=his$mids, cou=his$counts)  
+head(his.df)  
+
+#The above Histogram shows 3 peaks that might be represented by 3 Normal  
+#Distributions.  Guess at the 3 Means in Ascending Order, with a guess for  
+#the associated 3 Sigmas and fit the distribution.  
+wb2 <- 1/12
+ci
+ipis2 <- wb2*ci
+guemea <- ipis2 
+guesig <- ipis2/4
+guedis <- "norm"  
+(fitpro <- mix(as.mixdata(his.df), mixparam(mu=guemea, sigma=guesig), dist=guedis))  
+summary(fitpro)
+#Plot the results  
+plot(fitpro, main="Fit a Probability Distribution", xlim = c(0,0.5))  
+grid()  
+abline(v = ipis)
+legend("topright", lty=1, lwd=c(1, 1, 2), c("Original Distribution to be Fit",
+                                            "Individual Fitted Distributions",
+                                            "Fitted Distributions Combined"), 
+       col=c("blue", "red", rgb(0.2, 0.7, 0.2)), bg="white")
+
+```
+
+
+### compare final parameters
+```{r}
+summary(fitpro)
+# weights
+fitpro$parameters$pi
+ws/sum(ws)
+
+# ipi peaks
+fitpro$parameters$mu %>% round(3)
+ipis2 %>% round(3)
+ipis %>% round(3)
+1/wb
+```
+
+## real data
+### first quarter
+```{r}
+breaks <- 1000
+x <- df$ipi[which(quarters == 1)]
+his <- hist(x[x<0.75], breaks = breaks, xlim = c(0,0.5))
+his.df <- data.frame(mid=his$mids, cou=his$counts)  
+wb <- 1/11
+ipis <- wb*ci
+guemea <- ipis 
+guesig <- ipis/4
+guedis <- "norm"  
+(fitpro1 <- mix(as.mixdata(his.df), 
+                mixparam(mu=guemea, sigma=guesig), 
+                dist=guedis))  
+summary(fitpro1)
+plot(fitpro1, main="IPI first quarter of flight", xlim = c(0,0.5))  
+grid()  
+abline(v = ipis)
+
+```
+
+### fourth quarter
+```{r}
+breaks <- 1000
+x <- df$ipi[which(quarters == 4)]
+his <- hist(x[x<0.75], breaks = breaks, xlim = c(0,0.5))
+his.df <- data.frame(mid=his$mids, cou=his$counts)  
+wb <- 1/11
+ipis <- wb*ci
+guemea <- ipis 
+guesig <- ipis/4
+guedis <- "norm"  
+(fitpro4 <- mix(as.mixdata(his.df), 
+                mixparam(mu=guemea, sigma=guesig), 
+                dist=guedis))  
+summary(fitpro4)
+plot(fitpro4, main="IPI fourth quarter of flight", xlim = c(0,0.5))  
+grid()  
+abline(v = ipis)
+wb4 = .093
+```
+
+## mclust
+```{r}
+ipiBIC <- mclustBIC(x)
+plot(ipiBIC)
+
+irisBIC <- mclustBIC(iris[,-5]) 
+irisBIC 
+plot(irisBIC) 
+subset <- sample(1:nrow(iris), 100) 
+irisBIC <- mclustBIC(iris[,-5], initialization=list(subset = subset)) 
+irisBIC 
+plot(irisBIC) 
+irisBIC1 <- mclustBIC(iris[,-5], G=seq(from=1,to=9,by=2), modelNames=c("EII", "EEI", "EEE")) 
+irisBIC1
+plot(irisBIC1) 
+irisBIC2 <- mclustBIC(iris[,-5], G=seq(from=2,to=8,by=2), modelNames=c("VII", "VVI", "VVV"), x= irisBIC1) 
+irisBIC2 
+plot(irisBIC2) 
+nNoise <- 450 
+set.seed(0) 
+poissonNoise <- apply(apply( iris[,-5], 2, range), 2, function(x, n) 
+  runif(n, min = x[1]-.1, max = x[2]+.1), n = nNoise) 
+set.seed(0) 
+noiseInit <- sample(c(TRUE,FALSE),size=nrow(iris)+nNoise,replace=TRUE, prob=c(3,1)) 
+irisNdata <- rbind(iris[,-5], poissonNoise)
+irisNbic <- mclustBIC(data = irisNdata, G = 1:5, 
+                      initialization = list(noise = noiseInit)) 
+irisNbic 
+plot(irisNbic)
+```
+
+
+
+```{r}
+plot(df_clean$time, df_clean$ipi, ylim = c(0,0.1), col = rgb(0,0,0,.1))
+
+```
+
+
+
+# bayesmix examples
+```{r}
+data("fish", package = "bayesmix") 
+priors <- bayesmix::BMMpriors(y = fish)
+
+data("fish", package = "bayesmix") 
+model <- BMMmodel(fish, k = 4, 
+                  priors = list(kind = "independence", 
+                                parameter = "priorsFish", 
+                                hierarchical = "tau"), 
+                  initialValues = list(S0 = 2))
+model
+
+control <- JAGScontrol(variables = c("mu", "tau", "eta", "S"), burn.in = 1000, n.iter = 5000, seed = 10)
+z <- JAGSrun(fish, model = model, control = control)
+zSort<-Sort(z,by="mu")
+zSort %>% plot(ask = FALSE)
+```
+
+```{r}
+data("darwin") 
+hist(darwin$darwin, breaks = 100)
+k<-2 
+variables<-c("mu","tau","eta","S") 
+zBeta1.1<-JAGSrun(darwin, model=BMMmodel(k=k, priors=list(kind="independence"), 
+                                         no.empty.classes=TRUE,restrict="tau"), 
+                  control=JAGScontrol(variables,n.iter=3000, burn.in=1000,seed=1))
+
+zBeta1.15<-JAGSrun(darwin, 
+                   model=BMMmodel(k=k, 
+                                  priors=list(kind="independence"), 
+                                  aprioriWeights=c(15,1),no.empty.classes=TRUE, 
+                                  restrict="tau"), 
+                   control=JAGScontrol(variables,n.iter=3000, burn.in=1000,seed=1))
+zBeta1.1 %>% plot(ask = FALSE)
+zBeta1.15 %>% plot(ask = FALSE)
+```
