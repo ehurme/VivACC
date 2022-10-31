@@ -5,15 +5,8 @@ output: html_document
 
 # load libraries
 ```{r}
-library(tidyverse)
-library(bcpa)
-library(tidyr)
-library(data.table)
-library(lubridate)
-library(janitor)
-library(ggplot2)
-require(PBSmapping)
-library(vroom)
+library(pacman)
+p_load(tidyverse, bcpa, tidyr, data.table, lubridate, janitor, ggplot2, PBSmapping, vroom)
 op <- options(digits.secs=3)
 ```
 
@@ -78,7 +71,8 @@ ggplot(aes(x = X, y = Y, col = baro), data = gps)+ geom_path(size = 2)+
 
 ### read audio data
 ```{r}
-load("/Users/Edward/Dropbox/Vivesi2018/Analysis/Audio/Mviv18_06_calls.robj")
+load("../../../../Dropbox/Vivesi2018/Analysis/Audio/Mviv18_06_calls.robj")
+hist(Mv18_main$interval, breaks = 10000, xlim = c(0,0.5))
 Mv18_summary$Local_Time <- Mv18_summary$time -7*3600+years(10)
 Mv18_main$Local_Time <- Mv18_main$time -7*3600+years(10)
 i = 1

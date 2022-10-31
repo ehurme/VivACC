@@ -1,0 +1,36 @@
+---
+title: "Call_interval"
+output: html_document
+date: "2022-10-31"
+---
+
+```{r}
+library(pacman)
+p_load(tidyverse, bcpa, tidyr, data.table, lubridate, janitor, ggplot2, PBSmapping, vroom, bayesmix)
+op <- options(digits.secs=3)
+```
+
+```{r}
+data("fish", package = "bayesmix") 
+priors <- BMMpriors(y = fish)
+```
+
+
+```{r}
+load("../../../../Dropbox/Vivesi2018/Analysis/Audio/Mviv18_06_calls.robj")
+hist(Mv18_main$interval, breaks = 10000, xlim = c(0,0.5))
+plot(Mv18_main$peak_amp, Mv18_main$duration)
+```
+# clean IPI
+```{r}
+df <- data.table(time = Mv18_main$time+Mv18_main$start_time,
+                 ipi = Mv18_main$interval, 
+                 duration = Mv18_main$duration,
+                 peak_amp = Mv18_main$peak_amp) %>% na.omit
+df %>% filter(peak_amp > -12 & ipi > 0.005) -> df_clean
+first <- 1:round(nrow(df_clean)/2,0)
+second <- (max(first)+1):nrow(df_clean)
+hist(df_clean$ipi[first], breaks = 1000)
+
+```
+
