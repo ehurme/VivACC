@@ -244,8 +244,9 @@ acc$datetime <- as.POSIXct(acc$time, format = "%d-%b-%Y %H:%M:%OS", tz = "UTC")
 gyro$datetime <- as.POSIXct(gyro$time, format = "%d-%b-%Y %H:%M:%OS", tz = "UTC")
 mag$datetime <- as.POSIXct(mag$time, format = "%d-%b-%Y %H:%M:%OS", tz = "UTC")
 
-with(mag[1:8000,], plot(datetime, x_mag, type = "l"))
-acc$datetime[1]
+with(acc[150100:150300,], plot(datetime, z, type = "l"))
+# 7-9 beats/sec
+
 ```
 
 # add echo to acc
@@ -320,19 +321,19 @@ with(acc[590000:592000,], plot(datetime, x, col = rgb(call, 0,0,.3), pch = 16, t
 ```{r}
 A <- full_join(acc, gyro)
 A <- full_join(A, mag)
-write.csv(A, file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_buzz_Mviv18_06.csv")
+# write.csv(A, file = "../../../../Dropbox/Vivesi2018/Analysis/Accelerometer/data/ACC_buzz_Mviv18_06.csv")
 ```
 
 # load latest ACC data
 ```{r}
-m18_06 <- read.csv("../../../../Dropbox/VivesiACC/data/clean/clean_ACC_Mviv18_06.csv")
+m18_06 <- fread("../../../../Dropbox/VivesiACC/data/clean/clean_ACC_Mviv18_06.csv") %>% clean_names()
 m18_06$datetime <- as.POSIXct(m18_06$time, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
 
 ```
 
 ## compare both data sets
 ```{r}
-plot(acc$x, m18_06$Accelerometer.X)
+plot(acc$x, m18_06$accelerometer_x)
 ```
 hmmm, why are these different....
 

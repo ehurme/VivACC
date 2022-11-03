@@ -1,0 +1,36 @@
+---
+title: "Viv2015_IPI"
+output: html_document
+date: "2022-11-03"
+---
+
+```{r}
+library(pacman)
+p_load(tidyverse, tidyr, data.table, # stats
+       lubridate, janitor, ggplot2, 
+       vroom, bayesmix, mixtools)
+
+```
+
+
+```{r}
+v15 <- fread("../../../Dropbox/Myotis vivesi/Viv2015_gps_audio_full.csv")
+
+v15 <- v15 %>% filter(interval > 0 & interval < 0.5)
+ggplot(v15, aes (x = interval, col = bat))+
+  geom_density(n = 1000)+
+  theme_classic()+
+  facet_wrap(~hour(dmy_hms(v15$timestamp)) > 6)#, 
+             # labeller = c("early", "late"))
+# hist(hour(dmy_hms(v15$timestamp)))
+ggsave(filename = "Viv2015_IPI_earlylate.png")
+```
+
+```{r}
+ggplot(v15, aes(interval*1000, peak_power))+
+  geom_point(size = 0.1, alpha = 0.1)+ylim(c(-90,-40))+
+  ylab("Peak Amplitude (dB)")+xlab("Call Interval (ms)")+
+  theme_classic()
+1/9
+```
+
