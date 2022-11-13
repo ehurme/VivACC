@@ -87,7 +87,7 @@ clusterPlot(waveDF, cluster=F)
 # create wave
 ```{r}
 bats <- list.dirs("../../../../ownCloud/Firetail/Model_7CE02AF_main")
-k = 12
+k = 1
 for(k in 2:length(bats)){
   files <- list.files(bats[k], full.names = TRUE, 
                     pattern = "*-annotated-bursts-gps.csv")
@@ -113,8 +113,8 @@ for(k in 2:length(bats)){
         d$resting %>% nchar
         if(length(temp) > 0 & nchar(d$resting[i]) == 0 & nchar(d$foraging[i]) == 0){
           x <- c(x, temp[seq(1, length(temp), 3)])
-          y <- c(y, temp[seq(1, length(temp), 3)])
-          z <- c(z, temp[seq(1, length(temp), 3)])
+          y <- c(y, temp[seq(2, length(temp), 3)])
+          z <- c(z, temp[seq(3, length(temp), 3)])
           temp_time <- seq.POSIXt(from = d$timestamp[i], 
                                    to = d$timestamp[i]+length(temp)/25/3, 
                                    length.out = length(temp)/3)
@@ -131,9 +131,9 @@ for(k in 2:length(bats)){
     # spectro(w)
     wf <- ffilter(w, f= 25, from = 5, to = 7, bandpass = TRUE)
     png(filename = paste0(bats[k],"/",dates[j],"_wingbeatfreq.png"))
-      spectro(wf, f = 25, wl = 1024)
+      spectro(wf, f = 25, wl = 1024*2)
       par(new=TRUE)
-      pf <- dfreq(wf, f=25,wl = 1024, ovlp=50, threshold=20, type="l", col="red", lwd=2, xlab = "", ylab = "")  
+      pf <- dfreq(wf, f=25,wl = 1024*2, ovlp=50, threshold=20, type="l", col="red", lwd=2, xlab = "", ylab = "")  
     dev.off()
     save(x,y,z,time,burst,w,wf,pf, file = paste0(bats[k],"/",dates[j],"_wingbeatfreq.robj"))
     }
@@ -141,6 +141,61 @@ for(k in 2:length(bats)){
 }
 
 
+```
+
+## moveACC princomp wingbeat
+```{r}
+pc <- prcomp(cbind(x, y, y), scale. = FALSE)
+plot(pc)
+  fftpc1 <- fft(pc$x[, 1])
+plot(fftpc1)  
+  fftpc2 <- fft(pc$x[, 2])
+  fftpc3 <- fft(pc$x[, 3])
+  m1 <- Mod(fftpc1)
+plot(m1)  
+  m2 <- Mod(fftpc2)
+  m3 <- Mod(fftpc3)
+  peaks1 <- which.max(head(m1, round(length(m1)/2)))
+  ffilt <- fftpc1
+  ffilt[-peaks1] <- 0
+  ffilt2 <- Re(fft(ffilt, inverse = TRUE))#/(accDFLrow$TotalNumberSamples/accDFLrow$NumberOfAxis)
+  eigen1 <- eigen(cov(cbind(m1, m2, m3)))$values[1]
+  burst <- data.frame(cbind(x, y, z))
+  ax1mean <- sum(x)/length(x)
+  ax2mean <- sum(y)/length(y)
+  ax3mean <- sum(z)/length(z)
+  odba <- abs(burst$x - ax1mean) + abs(burst$y - 
+                                            ax2mean) + abs(burst$z - ax3mean)
+plot(odba, type = "l")  
+  axisDFr <- data.frame(individualID = accDFLrow[,indv], 
+                        tagID = accDFLrow[, tagid], 
+                        burstID = accDFLrow$burstID, 
+                        timestamp = accDFLrow$timestamp, 
+                        event.id = accDFLrow[,eventId], 
+                        beatsSec = peaks1/accDFLrow$BurstDurationSecs, 
+                        amplitude = max(m1)/(length(m1)/2), 
+                        propExplPC1 = summary(pc)$importance[2,1], 
+                        propExplPC2 = summary(pc)$importance[2, 
+                                                             varWaveWingBeat = var(ffilt2), 
+                                                             varRestWaves = var(pc$x[,1] - ffilt2), 
+                                                             varOrigWave = var(pc$x[, 1]), 
+                                                             eigenValue1 = eigen1, accAxes = accDFLrow[,whichaxes], 
+                                                             numberSamplesPerAxis = accDFLrow$TotalNumberSamples/accDFLrow$NumberOfAxis, 
+                                                             samplingFreqPerAxis = accDFLrow[, sampfreq], 
+                                                             burstDurationSecs = accDFLrow$BurstDurationSecs)
+```
+
+```{r}
+p_load(factoextra)
+fviz_pca_var(pc,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+             )
+pc$x[9900:10000,1] %>% plot(type = "l", ylim = c(-2,4))
+lines(z+1, col = 2)
+lines(y+2, col = 3)
+lines(x, col = 4)
 ```
 
 
