@@ -1,0 +1,111 @@
+---
+title: "Untitled"
+output: html_document
+date: "2022-11-30"
+---
+
+Explore converting ACC to wave and spectrogram
+
+```{r}
+library(pacman)
+p_load(tidyverse, magrittr, dplyr, plyr, data.table,
+       lubridate, janitor, ggplot2,
+       av, seewave, tuneR, phonTools, soundgen, # acoustic analysis
+       move, moveACC)
+source("../../../../Desktop/movebank_login.R")
+```
+
+# tuneR
+```{r}
+data <- tuneR::readWave("../../../../Desktop/test.wav")
+
+snd <- data@left - mean(data@left)
+
+# create spectrogram
+spec <- signal::specgram(x = snd, n = 1024, 
+                         Fs = data@samp.rate, 
+                         overlap = 1024 * 0.75)
+
+# normalize and rescale to dB
+P <- abs(spec$S)
+P <- P/max(P)
+
+out <- pmax(1e-6, P)
+dim(out) <- dim(P)
+out <- log10(out) / log10(1e-6)
+
+# plot spectrogram
+image(x = spec$t, y = spec$f, z = t(out), 
+      ylab = 'Freq [Hz]', xlab = 'Time [s]', 
+      useRaster=TRUE, ylim = c(4,8))
+
+
+```
+
+# seewave
+```{r}
+spectro(data) #,flim = c(0.005, 0.007))
+df <- ffilter(data, f= 25, from = 5, to = 7, bandpass = TRUE)
+spectro(df, f = 25)
+```
+
+## dominant frequency
+```{r}
+spectro(df, f=25, ovlp=75, zp=8, scale=FALSE)
+par(new=TRUE)
+pf <- dfreq(df, f=25, ovlp=50, threshold=20, type="l", col="red", lwd=2)
+```
+
+## mean spectrogram
+```{r}
+mf1 <- meanspec(df[1:(nrow(df)/2),], f = 25)
+mf2 <- meanspec(df[(nrow(df)/2):nrow(df),], f = 25)
+layout(1)
+p1 <- fpeaks(mf1)
+p2 <- fpeaks(mf2)
+
+p1
+p2
+```
+## frequency modulated analysis
+```{r}
+fma1 <- fma(data)
+idx <- which(fma1[,1] > 0.005 & fma1[,1] < 0.007)
+fma1[idx[which.max(fma1[idx,2])],]
+
+```
+
+## instantaneous frequency
+```{r}
+ifr <- ifreq(df, f = 25, col = rgb(0,0,0,.1), type = "o", threshold = 30, 
+      ylim = c(0.005, 0.007))
+
+ifr$p[,2] %>% na.omit
+```
+
+## wingbeat analysis
+```{r}
+f1 = 6.6
+f2 = 6.8
+m1 = 30
+m2 = ((f2/f1)^2)*m1
+m2
+```
+
+# av
+## hanning window
+```{r}
+w <- read_audio_fft(audio = "../../../../Desktop/test.wav", 
+                    window = hanning(2^9), overlap = 0.5, sample_rate = 25)
+# ?read_audio_fft
+plot(w)
+```
+## phonTools kaiser window
+```{r}
+v <- read_audio_fft(audio = "../../../../Desktop/test.wav", 
+                    window = phonTools::windowfunc(2^11, 'kaiser'), 
+                    overlap = 0.5, sample_rate = 25)
+plot(v)
+
+
+```

@@ -1,0 +1,112 @@
+---
+title: "moveACC"
+output: html_document
+date: "2022-11-30"
+---
+
+# load libraries
+```{r}
+library(pacman)
+# devtools::install_git('https://gitlab.com/anneks/moveACC.git', build = TRUE, build_opts = c("--no-resave-data", "--no-manual"), build_vignettes=T)
+p_load(tidyverse, magrittr, dplyr, plyr, data.table,
+       lubridate, janitor, ggplot2,
+       av, seewave, tuneR, phonTools, soundgen, # acoustic analysis
+       move, moveACC)
+source("../../../../Desktop/movebank_login.R")
+```
+
+
+```{r}
+test <- getMovebankNonLocationData(study="Study X", sensorID=2365683, login=login)
+```
+
+
+```{r}
+ACCtable <- getMovebankNonLocationData(study="Greater spear-nosed bat (Phyllostomus hastatus) in Bocas del Toro 2021-2022", login=login, animalName = "7CE02AF")
+acc <- ACCtable[,-c(9:15,19:29)] #%>% as.data.table
+acc
+```
+
+```{r}
+ACCtimeRange(acc, units="days")
+```
+
+```{r}
+BurstSamplingScedule(acc, showProgress = TRUE)
+```
+
+```{r}
+acc$tag_local_identifier <- acc$tag_local_identifier %>% as.factor %>% as.integer
+sensitiv <- data.frame(TagID=1, sensitivity="low")
+# transfDF <- TransformRawACC(acc, sensitivity.settings=sensitiv, units="g")
+```
+
+```{r}
+PlotAccData(df = ACCtable, bursts = c(100:110))
+```
+
+```{r}
+waveDFraw <- ACCwave(acc, transformedData=F, )
+str(waveDF)
+```
+
+```{r}
+clusterPlot(waveDF, cluster=F)
+1/6
+```
+
+
+## moveACC princomp wingbeat
+```{r}
+pc <- prcomp(cbind(x, y, y), scale. = FALSE)
+plot(pc)
+  fftpc1 <- fft(pc$x[, 1])
+plot(fftpc1)  
+  fftpc2 <- fft(pc$x[, 2])
+  fftpc3 <- fft(pc$x[, 3])
+  m1 <- Mod(fftpc1)
+plot(m1)  
+  m2 <- Mod(fftpc2)
+  m3 <- Mod(fftpc3)
+  peaks1 <- which.max(head(m1, round(length(m1)/2)))
+  ffilt <- fftpc1
+  ffilt[-peaks1] <- 0
+  ffilt2 <- Re(fft(ffilt, inverse = TRUE))#/(accDFLrow$TotalNumberSamples/accDFLrow$NumberOfAxis)
+  eigen1 <- eigen(cov(cbind(m1, m2, m3)))$values[1]
+  burst <- data.frame(cbind(x, y, z))
+  ax1mean <- sum(x)/length(x)
+  ax2mean <- sum(y)/length(y)
+  ax3mean <- sum(z)/length(z)
+  odba <- abs(burst$x - ax1mean) + abs(burst$y - 
+                                            ax2mean) + abs(burst$z - ax3mean)
+plot(odba, type = "l")  
+  axisDFr <- data.frame(individualID = accDFLrow[,indv], 
+                        tagID = accDFLrow[, tagid], 
+                        burstID = accDFLrow$burstID, 
+                        timestamp = accDFLrow$timestamp, 
+                        event.id = accDFLrow[,eventId], 
+                        beatsSec = peaks1/accDFLrow$BurstDurationSecs, 
+                        amplitude = max(m1)/(length(m1)/2), 
+                        propExplPC1 = summary(pc)$importance[2,1], 
+                        propExplPC2 = summary(pc)$importance[2, 
+                                                             varWaveWingBeat = var(ffilt2), 
+                                                             varRestWaves = var(pc$x[,1] - ffilt2), 
+                                                             varOrigWave = var(pc$x[, 1]), 
+                                                             eigenValue1 = eigen1, accAxes = accDFLrow[,whichaxes], 
+                                                             numberSamplesPerAxis = accDFLrow$TotalNumberSamples/accDFLrow$NumberOfAxis, 
+                                                             samplingFreqPerAxis = accDFLrow[, sampfreq], 
+                                                             burstDurationSecs = accDFLrow$BurstDurationSecs)
+```
+
+```{r}
+p_load(factoextra)
+fviz_pca_var(pc,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+             )
+pc$x[9900:10000,1] %>% plot(type = "l", ylim = c(-2,4))
+lines(z+1, col = 2)
+lines(y+2, col = 3)
+lines(x, col = 4)
+```

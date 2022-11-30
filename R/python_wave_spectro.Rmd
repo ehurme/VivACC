@@ -1,0 +1,35 @@
+---
+title: "Untitled"
+output: html_document
+date: "2022-11-30"
+---
+
+
+```{r}
+library(reticulate)
+# use_python("/Users/Edward/anaconda3/envs/rstudio/python.exe")
+# use_python("C:/Python39/python.exe")
+# use_virtualenv("/Users/Edward/anaconda3/envs/geo/")
+# use_condaenv("/Users/Edward/anaconda3/envs/geo/")
+# reticulate::py_list_packages()
+```
+
+```{python}
+import matplotlib.pyplot as plt
+import numpy as np
+t = np.arange(0.0, 2.0, 0.01)
+s = 1 + np.sin(2*np.pi*t)
+plt.plot(t,s)
+plt.show
+```
+
+https://docs.scipy.org/doc/scipy/reference/generated/scipy.io.wavfile.write.html
+```{python}
+# import pandas as pd
+# from scipy.io import wavfile
+# 
+# df = pd.read_csv('/Users/Edward/Desktop/Filename_selection_split#5_0.txt', sep = "\t", index_col = "Time")
+# df1 = df.iloc[:,:3]
+# wavfile.write('/Users/Edward/Desktop/test2.wav', rate = 25, data = df1.values)
+```
+

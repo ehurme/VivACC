@@ -4,87 +4,35 @@ output: html_document
 date: "2022-11-10"
 ---
 
-```{r}
-library(reticulate)
-# use_python("/Users/Edward/anaconda3/envs/rstudio/python.exe")
-# use_python("C:/Python39/python.exe")
-# use_virtualenv("/Users/Edward/anaconda3/envs/geo/")
-# use_condaenv("/Users/Edward/anaconda3/envs/geo/")
-# reticulate::py_list_packages()
-```
-
-```{python}
-import matplotlib.pyplot as plt
-import numpy as np
-t = np.arange(0.0, 2.0, 0.01)
-s = 1 + np.sin(2*np.pi*t)
-plt.plot(t,s)
-plt.show
-```
-
-https://docs.scipy.org/doc/scipy/reference/generated/scipy.io.wavfile.write.html
-```{python}
-# import pandas as pd
-# from scipy.io import wavfile
-# 
-# df = pd.read_csv('/Users/Edward/Desktop/Filename_selection_split#5_0.txt', sep = "\t", index_col = "Time")
-# df1 = df.iloc[:,:3]
-# wavfile.write('/Users/Edward/Desktop/test2.wav', rate = 25, data = df1.values)
-```
-
-
 # load libraries
 ```{r}
 library(pacman)
-devtools::install_git('https://gitlab.com/anneks/moveACC.git', build = TRUE, build_opts = c("--no-resave-data", "--no-manual"), build_vignettes=T)
 p_load(tidyverse, magrittr, dplyr, plyr, data.table,
        lubridate, janitor, ggplot2,
-       av, seewave, tuneR, phonTools, soundgen, # acoustic analysis
-       move, moveACC)
-source("../../../../Desktop/movebank_login.R")
-```
-
-```{r}
-test <- getMovebankNonLocationData(study="Study X", sensorID=2365683, login=login)
+       av, seewave, tuneR, phonTools, soundgen # acoustic analysis
+       )
 ```
 
 
 ```{r}
-ACCtable <- getMovebankNonLocationData(study="Greater spear-nosed bat (Phyllostomus hastatus) in Bocas del Toro 2021-2022", login=login, animalName = "7CE02AF")
-acc <- ACCtable[,-c(9:15,19:29)] #%>% as.data.table
-acc
-```
-
-```{r}
-ACCtimeRange(acc, units="days")
-```
-
-```{r}
-BurstSamplingScedule(acc, showProgress = TRUE)
-```
-
-```{r}
-acc$tag_local_identifier <- acc$tag_local_identifier %>% as.factor %>% as.integer
-sensitiv <- data.frame(TagID=1, sensitivity="low")
-# transfDF <- TransformRawACC(acc, sensitivity.settings=sensitiv, units="g")
-```
-
-```{r}
-PlotAccData(df = ACCtable, bursts = c(100:110))
-```
-
-```{r}
-waveDFraw <- ACCwave(acc, transformedData=F, )
-str(waveDF)
-```
-
-```{r}
-clusterPlot(waveDF, cluster=F)
-1/6
+# https://lukemiller.org/index.php/2011/02/converting-matlab-and-r-date-and-time-values/
+matlab2POS = function(x, timez = "UTC") {
+	days = x - 719529 	# 719529 = days from 1-1-0000 to 1-1-1970
+	secs = days * 86400 # 86400 seconds in a day
+	# This next string of functions is a complete disaster, but it works.
+	# It tries to outsmart R by converting the secs value to a POSIXct value
+	# in the UTC time zone, then converts that to a time/date string that 
+	# should lose the time zone, and then it performs a second as.POSIXct()
+	# conversion on the time/date string to get a POSIXct value in the user's 
+	# specified timezone. Time zones are a goddamned nightmare.
+	return(format(as.POSIXct(secs, origin = '1970-1-1', tz = 'UTC'), '%Y-%m-%d %H:%M:%OS3'))
+}
 ```
 
 
 # create wave
+## P. hastatus
+
 ```{r}
 bats <- list.dirs("../../../../ownCloud/Firetail/Model_7CE02AF_main")
 k = 1
@@ -143,158 +91,42 @@ for(k in 2:length(bats)){
 
 ```
 
-## moveACC princomp wingbeat
+## M. vivesi
 ```{r}
-pc <- prcomp(cbind(x, y, y), scale. = FALSE)
-plot(pc)
-  fftpc1 <- fft(pc$x[, 1])
-plot(fftpc1)  
-  fftpc2 <- fft(pc$x[, 2])
-  fftpc3 <- fft(pc$x[, 3])
-  m1 <- Mod(fftpc1)
-plot(m1)  
-  m2 <- Mod(fftpc2)
-  m3 <- Mod(fftpc3)
-  peaks1 <- which.max(head(m1, round(length(m1)/2)))
-  ffilt <- fftpc1
-  ffilt[-peaks1] <- 0
-  ffilt2 <- Re(fft(ffilt, inverse = TRUE))#/(accDFLrow$TotalNumberSamples/accDFLrow$NumberOfAxis)
-  eigen1 <- eigen(cov(cbind(m1, m2, m3)))$values[1]
-  burst <- data.frame(cbind(x, y, z))
-  ax1mean <- sum(x)/length(x)
-  ax2mean <- sum(y)/length(y)
-  ax3mean <- sum(z)/length(z)
-  odba <- abs(burst$x - ax1mean) + abs(burst$y - 
-                                            ax2mean) + abs(burst$z - ax3mean)
-plot(odba, type = "l")  
-  axisDFr <- data.frame(individualID = accDFLrow[,indv], 
-                        tagID = accDFLrow[, tagid], 
-                        burstID = accDFLrow$burstID, 
-                        timestamp = accDFLrow$timestamp, 
-                        event.id = accDFLrow[,eventId], 
-                        beatsSec = peaks1/accDFLrow$BurstDurationSecs, 
-                        amplitude = max(m1)/(length(m1)/2), 
-                        propExplPC1 = summary(pc)$importance[2,1], 
-                        propExplPC2 = summary(pc)$importance[2, 
-                                                             varWaveWingBeat = var(ffilt2), 
-                                                             varRestWaves = var(pc$x[,1] - ffilt2), 
-                                                             varOrigWave = var(pc$x[, 1]), 
-                                                             eigenValue1 = eigen1, accAxes = accDFLrow[,whichaxes], 
-                                                             numberSamplesPerAxis = accDFLrow$TotalNumberSamples/accDFLrow$NumberOfAxis, 
-                                                             samplingFreqPerAxis = accDFLrow[, sampfreq], 
-                                                             burstDurationSecs = accDFLrow$BurstDurationSecs)
+bats <- list.files("../../../../Dropbox/VivesiACC/data/", recursive = FALSE, pattern = "*.csv", full.names = TRUE)
+k = 24
+for(k in 1:length(bats)){
+  df <- fread(bats[k])
+  # df$timestamp %>% ymd_hms %>% date %>% table
+  if(length(df$time) == 0){
+    df$time <- matlab2POS(df$ACCtime)
+  }
+  dates <- df$time %>% ymd_hms %>% date %>% unique
+  j = 1
+  for(j in 1:length(dates)){
+    d <- df[which(date(ymd_hms(df$time)) == dates[j]),]
+    # png(filename = paste0(bats[k],"/",dates[j],"_z_by_time.png"))
+      plot(ymd_hms(d$time), d$ACCZ, type = "l")
+    # dev.off()
+    sample_rate <- ifelse(year(d$time[1]) == 2017, 40, 50)
+      
+      w <- Wave(left = d$ACCZ, samp.rate = sample_rate, bit = 16)
+      plot(w)
+      spectro(w, f = sample_rate, flim = c(0,0.015))
+      wf <- ffilter(w, f= sample_rate, from = 5, to = 10, bandpass = TRUE)
+      # png(filename = paste0(bats[k],"/",dates[j],"_wingbeatfreq.png"))
+        spectro(wf, f = sample_rate, wl = 1024*2)
+        par(new=TRUE)
+        pf <- dfreq(wf, f=sample_rate,wl = 1024*2, ovlp=50, threshold=20, 
+                    type="l", col="red", lwd=1, xlab = "", ylab = "")  
+      # dev.off()  
+    }
+    # save(x,y,z,time,burst,w,wf,pf,sample_rate, file = paste0(bats[k],"/",dates[j],"_wingbeatfreq.robj"))
+    }
+  }
+}
+
+print(df$ACCtime[1], digits = 21)
+matlab2POS(df$ACCtime[1])
 ```
 
-```{r}
-p_load(factoextra)
-fviz_pca_var(pc,
-             col.var = "contrib", # Color by contributions to the PC
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
-             repel = TRUE     # Avoid text overlapping
-             )
-pc$x[9900:10000,1] %>% plot(type = "l", ylim = c(-2,4))
-lines(z+1, col = 2)
-lines(y+2, col = 3)
-lines(x, col = 4)
-```
-
-
-```{r}
-pf
-```
-
-
-# tuneR
-```{r}
-data <- tuneR::readWave("../../../../Desktop/test.wav")
-
-snd <- data@left - mean(data@left)
-
-# create spectrogram
-spec <- signal::specgram(x = snd, n = 1024, 
-                         Fs = data@samp.rate, 
-                         overlap = 1024 * 0.75)
-
-# normalize and rescale to dB
-P <- abs(spec$S)
-P <- P/max(P)
-
-out <- pmax(1e-6, P)
-dim(out) <- dim(P)
-out <- log10(out) / log10(1e-6)
-
-# plot spectrogram
-image(x = spec$t, y = spec$f, z = t(out), 
-      ylab = 'Freq [Hz]', xlab = 'Time [s]', 
-      useRaster=TRUE, ylim = c(4,8))
-
-
-```
-
-# seewave
-```{r}
-spectro(data) #,flim = c(0.005, 0.007))
-df <- ffilter(data, f= 25, from = 5, to = 7, bandpass = TRUE)
-spectro(df, f = 25)
-```
-
-## dominant frequency
-```{r}
-spectro(df, f=25, ovlp=75, zp=8, scale=FALSE)
-par(new=TRUE)
-pf <- dfreq(df, f=25, ovlp=50, threshold=20, type="l", col="red", lwd=2)
-```
-
-## mean spectrogram
-```{r}
-mf1 <- meanspec(df[1:(nrow(df)/2),], f = 25)
-mf2 <- meanspec(df[(nrow(df)/2):nrow(df),], f = 25)
-layout(1)
-p1 <- fpeaks(mf1)
-p2 <- fpeaks(mf2)
-
-p1
-p2
-```
-## frequency modulated analysis
-```{r}
-fma1 <- fma(data)
-idx <- which(fma1[,1] > 0.005 & fma1[,1] < 0.007)
-fma1[idx[which.max(fma1[idx,2])],]
-
-```
-
-## instantaneous frequency
-```{r}
-ifr <- ifreq(df, f = 25, col = rgb(0,0,0,.1), type = "o", threshold = 30, 
-      ylim = c(0.005, 0.007))
-
-ifr$p[,2] %>% na.omit
-```
-
-## wingbeat analysis
-```{r}
-f1 = 6.2
-f2 = 6.4
-m1 = 100
-m2 = ((f2/f1)^2)*m1
-
-```
-
-# av
-## hanning window
-```{r}
-w <- read_audio_fft(audio = "../../../../Desktop/test.wav", 
-                    window = hanning(2^9), overlap = 0.5, sample_rate = 25)
-# ?read_audio_fft
-plot(w)
-```
-## phonTools kaiser window
-```{r}
-v <- read_audio_fft(audio = "../../../../Desktop/test.wav", 
-                    window = phonTools::windowfunc(2^11, 'kaiser'), 
-                    overlap = 0.5, sample_rate = 25)
-plot(v)
-
-
-```
