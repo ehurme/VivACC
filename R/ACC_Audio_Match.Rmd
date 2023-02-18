@@ -14,6 +14,9 @@ op <- options(digits.secs=3)
 
 # paths
 ```{r}
+# # Mviv17_60
+path_audio <- "../../../../Dropbox/Vivesi2017/Vesper_Data/20170627/Mviv17_60/parsed/"
+path_acc <- "../../../../Dropbox/Vivesi2017/Vesper_Data/20170627/Mviv17_60/parsed/"
 # # Mviv17_49
 # path_audio <- "../../../../Dropbox/VivesiAudio/BuzzCheck/Mviv17/Mviv17_49/Full"
 # path_acc <- "../../../../Dropbox/Vivesi2017/Vesper_Data/20170623/Mviv17_49/parsed/"
@@ -28,6 +31,8 @@ path_acc <- "../../../../Dropbox/Vivesi2017/Vesper_Data/20170621/Mviv17_41_ST/pa
 
 ## get time functions
 ```{r}
+file <- files[1]
+offset = 1
 get_start_time <- function(file, year = 2017, offset,...){
   split <- strsplit(file, split = "_")
   month <- as.numeric(split[[1]][offset+1])
@@ -40,7 +45,10 @@ get_start_time <- function(file, year = 2017, offset,...){
     seconds(sec)
   return(as.character(start)) 
 }
+```
 
+
+```{r}
 get_end_time <- function(file, year = 2017, offset,...){
   split <- strsplit(file, split = "_")
   end <- NA
@@ -60,11 +68,11 @@ get_end_time <- function(file, year = 2017, offset,...){
 
 # audio times
 ```{r}
-files <- list.files(path_audio)
+files <- list.files(path_audio, pattern = "*.wav")
 audio_times <- data.frame(files)
 
-audio_times$start <- ymd_hms(sapply(X = files, FUN = get_start_time, offset = 3))-7*3600
-audio_times$end <- ymd_hms(sapply(X = files, FUN = get_end_time, offset = 3))-7*3600
+audio_times$start <- ymd_hms(sapply(X = files, FUN = get_start_time, offset = 1))-7*3600
+audio_times$end <- ymd_hms(sapply(X = files, FUN = get_end_time, offset = 1))-7*3600
 audio_times$interval <- POSIXcti(audio_times$start, audio_times$end, timezone='UTC')
 ```
 

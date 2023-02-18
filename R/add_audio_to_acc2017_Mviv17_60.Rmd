@@ -164,8 +164,9 @@ for(i in 1:length(buzz_times)){
 
 
 with(m17_60, plot(datetime, buzz))
-with(m17_60[10000:100000,], 
-     plot(datetime, ACCX, col = call+buzz+1, cex = call+buzz+1/2,  type = "o", pch = 16))
+with(m17_60[109700:109800,], 
+     plot(datetime, ACCX, #col = call+buzz+1, cex = call+buzz+1/2,  
+          type = "o", pch = 16, cex = 0.2))
 
 ```
 
